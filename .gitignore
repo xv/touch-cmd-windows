@@ -1,0 +1,9 @@
+.vs/
+
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+[Dd]ebug/
+[Rr]elease/
