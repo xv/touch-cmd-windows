@@ -12,6 +12,7 @@
 #include "errmsg.h"
 #include "getopt.h"
 #include "concolors.h"
+#include "version.h"
 
 #define puts(str) _putts(_T(str))
 
@@ -97,13 +98,8 @@ https://github.com/xv/touch-cmd-windows");
  * Prints program version information.
  */
 void print_version_info(void) {
-    puts(
-"touch - Windows alternative to the Unix command\n\
-Copyright(C) Jad Altahan 2023\n\
-Version 1.0.0\n\n\
-This software may be modified And distributed under the terms of\n\
-the MIT license. For a copy of the license, consult this webpage:\n\
-https://github.com/xv/touch-cmd-windows/blob/master/LICENSE");
+    printf("Version %s\n", _T(VER_FILE_VERSION_STR));
+    puts("https://github.com/xv/touch-cmd-windows");
 }
 
 /*!
