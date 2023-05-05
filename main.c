@@ -78,15 +78,15 @@ Syntax:\n\
 Options:\n\
   -A OFFSET    Adjust the timestamp time by an offset in the format\n\
                [-]HH[mm][ss]. A Negative offset moves time backward.\n\n\
-  -a           Change access time only.\n\n\
-  -c           Do not create files.\n\n\
-  -d           Do not follow symbolic links.\n\n\
-  -m           Change modification time only.\n\n\
+  -a           Change access time only.\n\
+  -c           Do not create files.\n\
+  -d           Do not follow symbolic links.\n\
+  -m           Change modification time only.\n\
   -r FILE      Set the timestamp from a reference file.\n\n\
   -t STAMP     Set a timestamp in the format yyyyMMddHHmm[ss][Z].\n\
                You may append 'Z' at the end of the timestamp to\n\
                convert it from local time to UTC.\n\n\
-  -h           Display this help information and exit.\n\n\
+  -h           Display this help information and exit.\n\
   -v           Display version information and exit.\n\n\
 Refer to the detailed documentation at:\n\
 https://github.com/xv/touch-cmd-windows");
