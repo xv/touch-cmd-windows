@@ -70,6 +70,10 @@ To add `touch` to the PATH environment variable, extract the archive into a dire
 
 To remove `touch` from the PATH environment variable, run `.\uninstall` from an elevated PowerShell terminal. The `touch` command will no longer be accessible unless you are in the same directory as the executable.
 
+Build From Source
+-----------------
+This utility is written in C, using Visual Studio 2022 with MSVC v143 and Windows 10 SDK v2004 ([10.0.19041.0](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/#windows-10)). The solution and project files are present in the `/visualstudio/` directory. Simply run the IDE and build. Alternatively, there also a `.\build` PowerShell script to compile the code if you don't feel like firing up the IDE.
+
 Usage Examples
 --------------
 ```powershell
