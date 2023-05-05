@@ -62,8 +62,16 @@ Unicode Support
 ---------------
 Support for Unicode (UTF-16, really) is provided via the `tchar.h` header and its macros, which automatically determine whether or not wide character types should be used, based on the *Character Set* setting in the Visual Studio project properties. Without Unicode support enabled, the program will not be able to to touch filenames like `مرحبا привет こんにちは` because the entrypoint itself will fail to properly receive Unicode command line arguments.
 
+Installation
+------------
+While there's no traditional installer, if you [download a release](https://github.com/xv/touch-cmd-windows/releases), the .zip archive will contain the executable `touch` utility itself and two PowerShell scripts: `install.ps1` and `uninstall.ps1`. The purpose of these scripts is to add or remove the directory of the executable to the PATH environment variable so that `touch` can be called from any directory location in the terminal like any other commands.
+
+To add `touch` to the PATH environment variable, extract the archive into a directory &mdash;with a name of your choice&mdash; anywhere you want (I personally prefer `%USERPROFILE%`), then run `.\install` from an elevated PowerShell terminal. The `touch` command will become instantly available to use without requiring a restart of the terminal.
+
+To remove `touch` from the PATH environment variable, run `.\uninstall` from an elevated PowerShell terminal. The `touch` command will no longer be accessible unless you are in the same directory as the executable.
+
 Usage Examples
---------
+--------------
 ```powershell
 # Updates the Accessed And Modified timestamps of File1, File2, File3
 # If these files do not exist, they will not be created
