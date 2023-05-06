@@ -595,9 +595,12 @@ int _tmain(int argc, TCHAR **argv) {
         }
     }
 
-    // Activate both flags if none are specified in options
-    if (config.change_time_flags == 0) {
-        config.change_time_flags = (FLAG_CHANGE_TIME_MOD | FLAG_CHANGE_TIME_ACC);
+    // Didn't receive any files to touch
+    if (opt_index == argc) {
+        printf_error("%s: Missing file operand.\n", prog_name);
+
+        status_ok = false;
+        goto clean_exit;
     }
 
     // Process time adjustment offset
@@ -614,14 +617,6 @@ int _tmain(int argc, TCHAR **argv) {
     // Disallow timestamp inputs for multiple sources as it makes no sense
     if (stamp_input && stamp_ref_filename) {
         printf_error("%s: Cannot set timestamp from multiple sources.\n", prog_name);
-
-        status_ok = false;
-        goto clean_exit;
-    }
-
-    // Didn't receive any files to touch
-    if (opt_index == argc) {
-        printf_error("%s: Missing file operand.\n", prog_name);
 
         status_ok = false;
         goto clean_exit;
@@ -647,6 +642,11 @@ int _tmain(int argc, TCHAR **argv) {
             status_ok = false;
             goto clean_exit;
         }
+    }
+
+    // Activate both flags if none are specified in options
+    if (config.change_time_flags == 0) {
+        config.change_time_flags = (FLAG_CHANGE_TIME_MOD | FLAG_CHANGE_TIME_ACC);
     }
 
     for (; opt_index < argc; opt_index++) {
