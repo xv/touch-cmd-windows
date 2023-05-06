@@ -1,5 +1,5 @@
 What Is This
--------
+------------
 Have you ever used the `touch` command on a GNU/Linux or a macOS system? Well, this is exactly what this utility does. I frequently use this command on Linux to quickly create files and I find it rather annoying that I can't do the same thing when I am back on Windows, and so I decided to write a native Windows version of it to satisfy my needs. This is not a clone or a fork of the GNU Coreutils `touch`, and although the core functionality is the same, there are some subtle differences between the two. These discussed later in the document.
 
 The Command Line
@@ -69,6 +69,16 @@ While there's no traditional installer, if you [download a release](https://gith
 To add `touch` to the PATH environment variable, extract the archive into a directory &mdash;with a name of your choice&mdash; anywhere you want (I personally prefer `%USERPROFILE%`), then run `.\install` from an elevated PowerShell terminal. The `touch` command will become instantly available to use without requiring a restart of the terminal.
 
 To remove `touch` from the PATH environment variable, run `.\uninstall` from an elevated PowerShell terminal. The `touch` command will no longer be accessible unless you are in the same directory as the executable.
+
+### Security Note
+If you get an error saying "*<script>.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try executing one of the scripts mentioned above, you will need to enable the execution of scripts via:
+```PowerShell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+Once you are done, you may disable script executaion again via:
+```PowerShell
+Set-ExecutionPolicy -Scope CurrentUser Restricted
+```
 
 Build From Source
 -----------------
