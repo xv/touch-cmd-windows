@@ -40,7 +40,7 @@ You may refer to the [man page](https://man7.org/linux/man-pages/man1/touch.1.ht
 
 File Operand Shell Expansion
 ----------------------------
-Some Unix shells like Bash have a brace expansion feature that can be useful when combined with `touch`. For example, in a Bash shell, you could execute `touch file{1..3}`, which would create the files `file1`, `file2`, and `file3` if they do not exist, or update their timestamps if they exist. This is also possible on Windows with PowerShell, although the syntax is a little bit wordy. Here are some examples:
+Some Unix shells like Bash have a brace expansion feature that can be useful when combined with `touch`. For example, in a Bash shell, you could execute `touch File{1..3}`, which would create the files `File1`, `File2`, and `File3` if they do not exist, or update their timestamps if they exist. This is also possible on Windows with PowerShell, although the syntax is a little bit wordy. Here are some examples:
 ```powershell
 # Creates the files or updates timestamps of File1, File2, File2
 1..3 | % { touch File$_ }
@@ -94,6 +94,18 @@ touch -mA 0130 -t 202010241100 File
 
 # Decrements the Accessed and Modified timestamps of File by 10 mins
 touch -A -0010 File
+```
+
+### Verify Timestamp Changes
+If you need to check a file's timestamps after having called `touch`, I suggest you avoid checking through the Properties dialog of the file (right click &rarr; Properties). The reason is that, for whatever reason, opening the dialog will cause the *Accessed* timestamp to be sometimes updated to current time after the dialog is closed. Alternatively, check using PowerShell, through the `Get-Item` cmdlet, or its `gi` alias:
+```PowerShell
+(gi File).CreationTime
+(gi File).LastAccessTime
+(gi File).LastWriteTime
+
+# You can also combine all three properties into a single output via:
+# gp and fl are aliases for Get-ItemProperty and Format-List
+gp File | fl CreationTime,LastAccessTime,LastWriteTime
 ```
 
 License
