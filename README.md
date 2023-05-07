@@ -106,7 +106,20 @@ touch -mA 0130 -t 202010241100 File
 touch -A -0010 File
 ```
 
-### Verify Timestamp Changes
+### Working With Directories
+Just like the Unix version, this Windows utility does not create directories if they do not exit. If you want to use `touch` to create a file inside a directory that does not exist, you will need to create it first, then pipe in the path to `touch`. Here are some PowerShell examples to achieve that:
+```PowerShell
+# Creates Dir/Subdir/File1
+md Dir/Subdir/ | % { touch $_/File1 }
+
+# Same as the above but will cd into Dir/Subdir/ then touch
+md Dir/Subdir/ | % { cd $_ } | touch File1
+
+# Same as the above but with a shorter syntax
+cd (md Dir/Subdir/) | touch File1
+```
+
+### Verifying Timestamp Changes
 If you need to check a file's timestamps after having called `touch`, I suggest you avoid checking through the Properties dialog of the file (right click &rarr; Properties). The reason is that, for whatever reason, opening the dialog will cause the *Accessed* timestamp to be sometimes updated to current time after the dialog is closed. Alternatively, check using PowerShell, through the `Get-Item` cmdlet, or its `gi` alias:
 ```PowerShell
 (gi File).CreationTime
