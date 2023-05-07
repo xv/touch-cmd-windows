@@ -73,7 +73,7 @@ To remove `touch` from the PATH environment variable, run `.\uninstall` from an 
 ### Security Note
 If you get an error saying "*<script>.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try executing one of the scripts mentioned above, you will need to enable the execution of scripts via:
 ```PowerShell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+Set-ExecutionPolicy -Scope CurrentUser Bypass
 ```
 Once you are done, you may disable script executaion again via:
 ```PowerShell
