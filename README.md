@@ -119,7 +119,8 @@ md Dir/Subdir/ | % { cd $_ } | touch File1
 cd (md Dir/Subdir/) | touch File1
 ```
 
-### Verifying Timestamp Changes
+Verifying Timestamp Changes
+---------------------------
 If you need to check a file's timestamps after having called `touch`, I suggest you avoid checking through the Properties dialog of the file (right click &rarr; Properties). The reason is that, for whatever reason, opening the dialog will cause the *Accessed* timestamp to be sometimes updated to current time after the dialog is closed. Alternatively, check using PowerShell, through the `Get-Item` cmdlet, or its `gi` alias:
 ```PowerShell
 (gi File).CreationTime
