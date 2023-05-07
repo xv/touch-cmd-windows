@@ -1,6 +1,6 @@
 What Is This
 ------------
-Have you ever used the `touch` command on a GNU/Linux or a macOS system? Well, this is exactly what this utility does. I frequently use this command on Linux to quickly create files and I find it rather annoying that I can't do the same thing when I am back on Windows, and so I decided to write a native Windows version of it to satisfy my needs. This is not a clone or a fork of the GNU Coreutils `touch`, and although the core functionality is the same, there are some subtle differences between the two. These discussed later in the document.
+Have you ever used the `touch` command on a GNU/Linux or a macOS system? Well, this is exactly what this utility does. I frequently use this command on Linux to quickly create files and I find it rather annoying that I can't do the same thing when I am back on Windows, and so I decided to write a native Windows version of it to satisfy my needs. This is not a clone or a fork of the GNU Coreutils `touch`, and although the core functionality is the same, there are some subtle differences between the two. These differences are discussed later in the document.
 
 The Command Line
 ----------------
@@ -127,7 +127,6 @@ If you need to check a file's timestamps after having called `touch`, I suggest 
 (gi File).LastWriteTime
 
 # You can also combine all three properties into a single output via:
-# gp and fl are aliases for Get-ItemProperty and Format-List
 gp File | fl CreationTime,LastAccessTime,LastWriteTime
 ```
 
