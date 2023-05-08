@@ -42,7 +42,7 @@ typedef struct program_config {
     bool no_create;
     bool no_dereference;
     reference_timestamps_t *ref_stamps;
-    SYSTEMTIME *custom_stamp;
+    FILETIME *stamp;
     timestamp_format_t stamp_format;
 } program_config_t;
 
@@ -56,7 +56,7 @@ program_config_t config = {
     .no_create = false,
     .no_dereference = false,
     .ref_stamps = NULL,
-    .custom_stamp = NULL,
+    .stamp = NULL,
     .stamp_format = TF_LOCAL
 };
 
@@ -182,6 +182,29 @@ static inline ushort clamp_ushort(ushort n, ushort min, ushort max) {
 
 /*!
  * @brief
+ * Converts a local time specified in a SYSTEMTIME struct to file time.
+ *
+ * @param system_time
+ * Pointer to a SYSTEMTIME struct containing the time to convert.
+ *
+ * @param file_time
+ * Pointer to a FILETIME struct to receive the converted time.
+ *
+ * @return
+ * 1 if the function succeeds; 0 otherwise.
+ */
+bool local_time_to_file_time(const LPSYSTEMTIME system_time, LPFILETIME file_time) {
+    if (!system_time || !file_time) {
+        return false;
+    }
+
+    FILETIME ft_local;
+    SystemTimeToFileTime(system_time, &ft_local);
+    return LocalFileTimeToFileTime(&ft_local, file_time);
+}
+
+/*!
+ * @brief
  * Adjusts the given file time by the given offset. If the offset is negative,
  * time is moved backward. Otherwise, forward.
  *
@@ -238,33 +261,32 @@ void adjust_file_timestamp(HANDLE file_handle, int offset) {
 
 /*!
  * @brief
- * Translates a timestamp to a SYSTEMTIME struct.
+ * Translates a timestamp to a FILETIME struct.
  *
  * @param stamp
  * Timestamp string in the format yyyyMMddHHmm[ss].
  * 
  * @returns
- * Pointer to a SYSTEMTIME struct, containing the timestamp info.
+ * Pointer to a FILETIME struct containing the translated timestamp.
  * Caller is responsible for freeing allocated memory.
  */
-LPSYSTEMTIME string_to_systime(const TCHAR *stamp) {
-    LPSYSTEMTIME result = malloc(sizeof(SYSTEMTIME));
+LPFILETIME string_to_filetime(const TCHAR *stamp) {
+    LPFILETIME result = malloc(sizeof(FILETIME));
     if (!result) {
         return NULL;
     }
 
-    result->wSecond = 0;
-    result->wMilliseconds = 0;
+    SYSTEMTIME st = { 0 };
 
     int num_fields_converted = _stscanf(
         stamp,
         _T("%4hu%2hu%2hu%2hu%2hu%2hu"),
-        &result->wYear,
-        &result->wMonth,
-        &result->wDay,
-        &result->wHour,
-        &result->wMinute,
-        &result->wSecond
+        &st.wYear,
+        &st.wMonth,
+        &st.wDay,
+        &st.wHour,
+        &st.wMinute,
+        &st.wSecond
     );
 
     if (num_fields_converted < 5) {
@@ -272,12 +294,23 @@ LPSYSTEMTIME string_to_systime(const TCHAR *stamp) {
         return NULL;
     }
 
-    result->wYear = clamp_ushort(result->wYear, 1601, 30827);
-    result->wMonth = clamp_ushort(result->wMonth, 1, 12);
-    result->wDay = clamp_ushort(result->wDay, 1, 31);
-    result->wHour = clamp_ushort(result->wHour, 0, 23);
-    result->wMinute = clamp_ushort(result->wMinute, 0, 59);
-    result->wSecond = clamp_ushort(result->wSecond, 0, 59);
+    st.wYear = clamp_ushort(st.wYear, 1601, 30827);
+    st.wMonth = clamp_ushort(st.wMonth, 1, 12);
+    st.wDay = clamp_ushort(st.wDay, 1, 31);
+    st.wHour = clamp_ushort(st.wHour, 0, 23);
+    st.wMinute = clamp_ushort(st.wMinute, 0, 59);
+    st.wSecond = clamp_ushort(st.wSecond, 0, 59);
+
+    if (config.stamp_format == TF_LOCAL) {
+        local_time_to_file_time(&st, result);
+    } else {
+        // UTC timestamp
+        SystemTimeToFileTime(&st, result);
+    }
+
+    if (config.time_offset != 0) {
+        adjust_time_offset(result, config.time_offset);
+    }
 
     return result;
 }
@@ -336,15 +369,15 @@ int parse_hhmmss(TCHAR *hhmmss) {
 
 /*!
  * @brief
- * Parses a given timestamp to translate into a SYSTEMTIME struct.
+ * Parses a given timestamp to translate into a FILETIME struct.
  * 
  * @param stamp
  * The string to parse, in the format yyyyMMddHHmm[ss][Z].
  * 
  * @returns
- * Pointer to a SYSTEMTIME struct, containing the parsed timestamp info.
+ * Pointer to a FILETIME struct containing the parsed timestamp.
  */
-LPSYSTEMTIME parse_timestamp_string(TCHAR *stamp) {
+LPFILETIME parse_timestamp_string(TCHAR *stamp) {
     TCHAR *zulu = _tcschr(stamp, 'Z');
 
     if (zulu != NULL) {
@@ -361,30 +394,7 @@ LPSYSTEMTIME parse_timestamp_string(TCHAR *stamp) {
         return NULL;
     }
 
-    return string_to_systime(stamp);
-}
-
-/*!
- * @brief
- * Converts a local time specified in a SYSTEMTIME struct to file time.
- * 
- * @param system_time
- * Pointer to a SYSTEMTIME struct containing the time to convert.
- * 
- * @param file_time
- * Pointer to a FILETIME struct to receive the converted time.
- * 
- * @return
- * 1 if the function succeeds; 0 otherwise.
- */
-bool local_time_to_file_time(const LPSYSTEMTIME system_time, LPFILETIME file_time) {
-    if (!system_time || !file_time) {
-        return false;
-    }
-
-    FILETIME file_time_local;
-    SystemTimeToFileTime(system_time, &file_time_local);
-    return LocalFileTimeToFileTime(&file_time_local, file_time);
+    return string_to_filetime(stamp);
 }
 
 /*!
@@ -414,82 +424,75 @@ reference_timestamps_t *get_ref_timestamp(const TCHAR *filename) {
     result->access_time = attr.ftLastAccessTime;
     result->modified_time = attr.ftLastWriteTime;
 
+    if (config.time_offset != 0) {
+        bool chg_acc = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_ACC);
+        bool chg_mod = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_MOD);
+
+        if (chg_acc && chg_mod) {
+            adjust_time_offset(&result->access_time, config.time_offset);
+            adjust_time_offset(&result->modified_time, config.time_offset);
+        } else if (chg_acc) {
+            adjust_time_offset(&result->access_time, config.time_offset);
+        } else {
+            adjust_time_offset(&result->modified_time, config.time_offset);
+        }
+    }
+
     return result;
 }
 
 /*!
  * @brief
- * Sets the file timestamp from a user-supplied input. If this input is not
- * supplied via the appropriate option, the timestamp will use the current
- * time.
+ * Retrieves the current system date and time.
  *
- * @param file_handle
- * An open handle to the file to set its timestamp.
+ * @return
+ * Pointer to a FILETIME struct containing the current system date and time.
  */
-void set_file_timestamp_from_input(HANDLE file_handle) {
-    FILETIME file_time;
-
-    if (config.custom_stamp == NULL) {
-        if (config.time_offset != 0) {
-            adjust_file_timestamp(file_handle, config.time_offset);
-            return;
-        }
-
-        SYSTEMTIME sys_time;
-        GetSystemTime(&sys_time);
-        SystemTimeToFileTime(&sys_time, &file_time);
-    } else {
-        if (config.stamp_format == TF_LOCAL) {
-            local_time_to_file_time(config.custom_stamp, &file_time);
-        } else {
-            // UTC timestamp
-            SystemTimeToFileTime(config.custom_stamp, &file_time);
-        }
-
-        if (config.time_offset != 0) {
-            adjust_time_offset(&file_time, config.time_offset);
-        }
+LPFILETIME get_current_filetime(void) {
+    LPFILETIME result = malloc(sizeof(FILETIME));
+    if (!result) {
+        return NULL;
     }
 
-    bool chg_acc = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_ACC);
-    bool chg_mod = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_MOD);
+    SYSTEMTIME st;
+    GetSystemTime(&st);
+    SystemTimeToFileTime(&st, result);
 
-    SetFileTime(
-        file_handle,
-        NULL,
-        chg_acc ? &file_time : &ft_preserved,
-        chg_mod ? &file_time : &ft_preserved
-    );
+    return result;
 }
 
 /*!
  * @brief
- * Sets the file timestamp from a reference file.
+ * Sets the timestamps of the file based on the specified options
  * 
  * @param file_handle
  * An open handle to the file to set its timestamp.
  */
-void set_file_timestamp_from_ref(HANDLE file_handle) {
+void set_file_timestamp(HANDLE file_handle) {
     bool chg_acc = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_ACC);
     bool chg_mod = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_MOD);
 
-    if (config.time_offset != 0) {
-        if (chg_acc && chg_mod) {
-            adjust_time_offset(&config.ref_stamps->access_time, config.time_offset);
-            adjust_time_offset(&config.ref_stamps->modified_time, config.time_offset);
-        } else if (chg_acc) {
-            adjust_time_offset(&config.ref_stamps->access_time, config.time_offset);
-        } else {
-            adjust_time_offset(&config.ref_stamps->modified_time, config.time_offset);
+    if (config.ref_stamps) {
+        SetFileTime(
+            file_handle,
+            NULL,
+            chg_acc ? &config.ref_stamps->access_time : &ft_preserved,
+            chg_mod ? &config.ref_stamps->modified_time : &ft_preserved
+        );
+    } else {
+        // Custom timestamp not specified but an adjustment option is
+        if (config.time_offset != 0 && !config.stamp) {
+            adjust_file_timestamp(file_handle, config.time_offset);
+            return;
         }
-    }
 
-    SetFileTime(
-        file_handle,
-        NULL,
-        chg_acc ? &config.ref_stamps->access_time : &ft_preserved,
-        chg_mod ? &config.ref_stamps->modified_time : &ft_preserved
-    );
+        SetFileTime(
+            file_handle,
+            NULL,
+            chg_acc ? config.stamp : &ft_preserved,
+            chg_mod ? config.stamp : &ft_preserved
+        );
+    }
 }
 
 /*!
@@ -521,11 +524,7 @@ bool touch(const TCHAR *filename, bool follow_symlinks) {
         return create_new ? false : true;
     }
 
-    if (config.ref_stamps) {
-        set_file_timestamp_from_ref(file_handle);
-    } else {
-        set_file_timestamp_from_input(file_handle);
-    }
+    set_file_timestamp(file_handle);
 
     CloseHandle(file_handle);
     return true;
@@ -540,7 +539,7 @@ int _tmain(int argc, TCHAR **argv) {
     // Store option arguments to process later before touching
     TCHAR *hhmmss_adjustment = NULL;
     TCHAR *stamp_input = NULL;
-    TCHAR *stamp_ref_filename = NULL;
+    TCHAR *stamp_ref_file_input = NULL;
 
     console_init(&console);
 
@@ -573,7 +572,7 @@ int _tmain(int argc, TCHAR **argv) {
                 config.change_time_flags |= FLAG_CHANGE_TIME_MOD;
                 break;
             case 'r':
-                stamp_ref_filename = opt_arg;
+                stamp_ref_file_input = opt_arg;
                 break;
             case 't':
                 stamp_input = opt_arg;
@@ -615,7 +614,7 @@ int _tmain(int argc, TCHAR **argv) {
     }
 
     // Disallow timestamp inputs for multiple sources as it makes no sense
-    if (stamp_input && stamp_ref_filename) {
+    if (stamp_input && stamp_ref_file_input) {
         printf_error("%s: Cannot set timestamp from multiple sources.\n", prog_name);
 
         status_ok = false;
@@ -624,18 +623,24 @@ int _tmain(int argc, TCHAR **argv) {
 
     // Process user-provided timestamp
     if (stamp_input) {
-        config.custom_stamp = parse_timestamp_string(stamp_input);
-        if (!config.custom_stamp) {
+        config.stamp = parse_timestamp_string(stamp_input);
+        if (!config.stamp) {
             printf_error("%s: Timestamp does not respect format.\n", prog_name);
 
             status_ok = false;
             goto clean_exit;
         }
+    } else {
+        // No need for current time if we're using a ref or only adjusting
+        // a file's timestamps
+        if (!(stamp_ref_file_input || hhmmss_adjustment)) {
+            config.stamp = get_current_filetime();
+        }
     }
 
     // Process file-referenced timestamp
-    if (stamp_ref_filename) {
-        config.ref_stamps = get_ref_timestamp(stamp_ref_filename);
+    if (stamp_ref_file_input) {
+        config.ref_stamps = get_ref_timestamp(stamp_ref_file_input);
         if (!config.ref_stamps) {
             printf_error("%s: Reference timestamp could not be set.\n", prog_name);
 
@@ -673,8 +678,8 @@ clean_exit:
         free(config.ref_stamps);
     }
 
-    if (config.custom_stamp) {
-        free(config.custom_stamp);
+    if (config.stamp) {
+        free(config.stamp);
     }
 
     int exit_code = status_ok ? EXIT_SUCCESS : EXIT_FAILURE;
