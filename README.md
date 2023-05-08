@@ -67,7 +67,7 @@ To add `touch` to the PATH environment variable, extract the archive into a dire
 To remove `touch` from the PATH environment variable, run `.\uninstall` from an elevated PowerShell terminal. The `touch` command will no longer be accessible unless you are in the same directory as the executable.
 
 ### Security Note
-If you get an error saying "*<script>.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try executing one of the scripts mentioned above, you will need to enable the execution of scripts via:
+If you get an error saying "*&lt;script&gt;.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try executing one of the scripts mentioned above, you will need to enable the execution of scripts via:
 ```PowerShell
 Set-ExecutionPolicy -Scope CurrentUser Bypass
 ```
