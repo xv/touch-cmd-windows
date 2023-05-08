@@ -43,7 +43,8 @@ File Operand Shell Expansion
 Some Unix shells like Bash have a brace expansion feature that can be useful when combined with `touch`. For example, in a Bash shell, you could execute `touch File{1..3}`, which would create the files `File1`, `File2`, and `File3` if they do not exist, or update their timestamps if they exist. This is also possible on Windows with PowerShell, although the syntax is a little bit wordy. Here are some examples:
 ```powershell
 # Creates the files or updates timestamps of File1, File2, File2
-1..3 | % { touch File$_ }
+# Note: double quotes around filenames are a must!
+touch (1..3 | % { "File$_" }) 
 
 # A more complex version of the above that support string formatting
 # Creates the files or update the timestamps of File001, File002, File002
@@ -51,11 +52,6 @@ touch (1..3 | % { "File{0:d3}" -f $_ })
 
 # Creates the files or updates timestamps of FileA, FileB, FileC
 touch ('A'[0]..'C'[0] | % { "File" + [char]$_ })
-```
-And in Batch/Command Prompt:
-```batch
-:: Creates the files or updates timestamps of File1, File2, File3
-for /L %n in (1,1,3) do @touch File%n
 ```
 
 Unicode Support
