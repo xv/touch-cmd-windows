@@ -73,6 +73,8 @@ const FILETIME ft_preserved = {
     0xFFFFFFFF
 };
 
+console_screen_t *console;
+
 /*!
  * @brief
  * Prints program usage information.

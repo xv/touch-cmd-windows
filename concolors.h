@@ -38,7 +38,7 @@ typedef enum _console_color {
     COLOR_BRIGHT_WHITE = 0xf
 } console_color_t;
 
-console_screen_t *console;
+extern console_screen_t *console;
 
 /**
  * @brief

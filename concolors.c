@@ -23,7 +23,7 @@ void console_init(console_screen_t **ci)
 }
 
 void console_set_colors(console_color_t fg, console_color_t bg) {
-    if (bg == COLOR_NONE && fg == COLOR_NONE) {
+    if (console == NULL || (bg == COLOR_NONE && fg == COLOR_NONE)) {
         return;
     }
 
