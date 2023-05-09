@@ -14,6 +14,12 @@
 #include "concolors.h"
 #include "version.h"
 
+#ifdef _WIN64
+#define BUILD_PLAT "x64"
+#else
+#define BUILD_PLAT "x86"
+#endif
+
 #define puts(str) _putts(_T(str))
 
 #define printf(fmt, ...) _tprintf(_T(fmt), ##__VA_ARGS__)
@@ -96,10 +102,9 @@ https://github.com/xv/touch-cmd-windows");
 /*!
  * @brief
  * Prints program version information.
- */
+ */ 
 void print_version_info(void) {
-    printf("Version %s\n", _T(VER_FILE_VERSION_STR));
-    puts("https://github.com/xv/touch-cmd-windows");
+    printf("touch v%s (%s)\n", _T(VER_DISPVERSION_STR), _T(BUILD_PLAT));
 }
 
 /*!
