@@ -79,7 +79,7 @@ console_screen_t *console;
  * @brief
  * Prints program usage information.
  */
-void print_usage_info(void) {
+static void print_usage_info(void) {
     puts(
 "\
 Syntax:\n\
@@ -105,7 +105,7 @@ https://github.com/xv/touch-cmd-windows");
  * @brief
  * Prints program version information.
  */ 
-void print_version_info(void) {
+static void print_version_info(void) {
     printf("touch v%s (%s)\n", _T(VER_DISPVERSION_STR), _T(BUILD_PLAT));
 }
 
@@ -119,7 +119,7 @@ void print_version_info(void) {
  * @return
  * 1 if the given string is all digits; false otherwise.
  */
-bool is_digits(const TCHAR *str) {
+static bool is_digits(const TCHAR *str) {
     if (*str == '\0') {
         return false;
     }
@@ -148,7 +148,7 @@ bool is_digits(const TCHAR *str) {
  * @return
  * File name without a path.
  */
-TCHAR *get_name(TCHAR *path, bool rem_ext) {
+static TCHAR *get_name(TCHAR *path, bool rem_ext) {
     TCHAR *name = _tcsrchr(path, '\\');
     if (!name) {
         return path;
@@ -200,7 +200,7 @@ static inline ushort clamp_ushort(ushort n, ushort min, ushort max) {
  * @return
  * 1 if the function succeeds; 0 otherwise.
  */
-bool local_time_to_file_time(const LPSYSTEMTIME system_time, LPFILETIME file_time) {
+static bool local_time_to_file_time(const LPSYSTEMTIME system_time, LPFILETIME file_time) {
     if (!system_time || !file_time) {
         return false;
     }
@@ -221,7 +221,7 @@ bool local_time_to_file_time(const LPSYSTEMTIME system_time, LPFILETIME file_tim
  * @param offset
  * Time represented in seconds.
  */
-void adjust_time_offset(FILETIME *ft, int offset) {
+static void adjust_time_offset(FILETIME *ft, int offset) {
     ULARGE_INTEGER uli = {
         ft->dwLowDateTime,
         ft->dwHighDateTime
@@ -243,7 +243,7 @@ void adjust_time_offset(FILETIME *ft, int offset) {
  * @param offset
  * Time represented in seconds.
  */
-void adjust_file_timestamp(HANDLE file_handle, int offset) {
+static void adjust_file_timestamp(HANDLE file_handle, int offset) {
     bool chg_acc = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_ACC);
     bool chg_mod = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_MOD);
 
@@ -277,7 +277,7 @@ void adjust_file_timestamp(HANDLE file_handle, int offset) {
  * Pointer to a FILETIME struct containing the translated timestamp.
  * Caller is responsible for freeing allocated memory.
  */
-LPFILETIME string_to_filetime(const TCHAR *stamp) {
+static LPFILETIME string_to_filetime(const TCHAR *stamp) {
     LPFILETIME result = malloc(sizeof(FILETIME));
     if (!result) {
         return NULL;
@@ -333,7 +333,7 @@ LPFILETIME string_to_filetime(const TCHAR *stamp) {
  * Number of seconds if successful, either positive or negative depending
  * on the operator parsed. Otherwise, INT_MIN is returned on failure.
  */
-int parse_hhmmss(TCHAR *hhmmss) {
+static int parse_hhmmss(TCHAR *hhmmss) {
     bool neg = false;
 
     if (*hhmmss == '-') {
@@ -384,7 +384,7 @@ int parse_hhmmss(TCHAR *hhmmss) {
  * @returns
  * Pointer to a FILETIME struct containing the parsed timestamp.
  */
-LPFILETIME parse_timestamp_string(TCHAR *stamp) {
+static LPFILETIME parse_timestamp_string(TCHAR *stamp) {
     TCHAR *zulu = _tcschr(stamp, 'Z');
 
     if (zulu != NULL) {
@@ -415,7 +415,7 @@ LPFILETIME parse_timestamp_string(TCHAR *stamp) {
  * Pointer to a reference_timestamps struct containing timestamps retrieved
  * from the specified file.
  */
-reference_timestamps_t *get_ref_timestamp(const TCHAR *filename) {
+static reference_timestamps_t *get_ref_timestamp(const TCHAR *filename) {
     reference_timestamps_t *result = malloc(sizeof(reference_timestamps_t));
     if (!result) {
         return NULL;
@@ -455,7 +455,7 @@ reference_timestamps_t *get_ref_timestamp(const TCHAR *filename) {
  * @return
  * Pointer to a FILETIME struct containing the current system date and time.
  */
-LPFILETIME get_current_filetime(void) {
+static LPFILETIME get_current_filetime(void) {
     LPFILETIME result = malloc(sizeof(FILETIME));
     if (!result) {
         return NULL;
@@ -475,7 +475,7 @@ LPFILETIME get_current_filetime(void) {
  * @param file_handle
  * An open handle to the file to set its timestamp.
  */
-void set_file_timestamp(HANDLE file_handle) {
+static void set_file_timestamp(HANDLE file_handle) {
     bool chg_acc = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_ACC);
     bool chg_mod = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_MOD);
 
@@ -509,7 +509,7 @@ void set_file_timestamp(HANDLE file_handle) {
  * @param filename
  * Path to the file to touch.
  */
-bool touch(const TCHAR *filename, bool follow_symlinks) {
+static bool touch(const TCHAR *filename, bool follow_symlinks) {
     bool create_new = !config.no_create;
     int cw_flags = FILE_ATTRIBUTE_NORMAL;
 
