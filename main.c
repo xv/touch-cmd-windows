@@ -66,11 +66,13 @@ program_config_t config = {
     .stamp_format = TF_LOCAL
 };
 
-// Specifies that a file's previous access and modification times
-// should be preserved
+// Specifies that a file's previous last access or modified times should be
+// preserved when operating with file handles
+// https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+// https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfiletime
 const FILETIME ft_preserved = {
-    0xFFFFFFFF,
-    0xFFFFFFFF
+    .dwLowDateTime = 0xFFFFFFFF,
+    .dwHighDateTime = 0xFFFFFFFF
 };
 
 console_screen_t *console;
