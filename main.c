@@ -38,8 +38,8 @@ typedef enum timestamp_format {
 } timestamp_format_t;
 
 typedef struct reference_timestamps {
-    FILETIME access_time;
-    FILETIME modified_time;
+    FILETIME last_access_time;
+    FILETIME last_write_time;
 } reference_timestamps_t;
 
 typedef struct program_config {
@@ -52,8 +52,8 @@ typedef struct program_config {
     timestamp_format_t stamp_format;
 } program_config_t;
 
-#define FLAG_CHANGE_TIME_MOD (1 << 0)
-#define FLAG_CHANGE_TIME_ACC (1 << 1)
+#define FLAG_CHANGE_TIME_LAST_WRITE  (1 << 0)
+#define FLAG_CHANGE_TIME_LAST_ACCESS (1 << 1)
 #define HAS_FLAG(flags, mask) (flags & mask) != 0
 
 program_config_t config = {
@@ -66,8 +66,8 @@ program_config_t config = {
     .stamp_format = TF_LOCAL
 };
 
-// Specifies that a file's previous last access or modified times should be
-// preserved when operating with file handles
+// Specifies that a file's previous last access or write times should be preserved
+// when operating with file handles
 // https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
 // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfiletime
 const FILETIME ft_preserved = {
@@ -246,25 +246,25 @@ static void adjust_time_offset(FILETIME *ft, int offset) {
  * Time represented in seconds.
  */
 static void adjust_file_timestamp(HANDLE file_handle, int offset) {
-    bool chg_acc = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_ACC);
-    bool chg_mod = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_MOD);
+    bool change_access = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS);
+    bool change_write = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE);
 
-    FILETIME ft_acc = { 0 };
-    FILETIME ft_mod = { 0 };
+    FILETIME ft_access = { 0 };
+    FILETIME ft_write = { 0 };
 
-    if (chg_acc && chg_mod) {
-        GetFileTime(file_handle, NULL, &ft_acc, &ft_mod);
-        adjust_time_offset(&ft_acc, offset);
-        adjust_time_offset(&ft_mod, offset);
-        SetFileTime(file_handle, NULL, &ft_acc, &ft_mod);
-    } else if (chg_acc) {
-        GetFileTime(file_handle, NULL, &ft_acc, NULL);
-        adjust_time_offset(&ft_acc, offset);
-        SetFileTime(file_handle, NULL, &ft_acc, &ft_preserved);
+    if (change_access && change_write) {
+        GetFileTime(file_handle, NULL, &ft_access, &ft_write);
+        adjust_time_offset(&ft_access, offset);
+        adjust_time_offset(&ft_write, offset);
+        SetFileTime(file_handle, NULL, &ft_access, &ft_write);
+    } else if (change_access) {
+        GetFileTime(file_handle, NULL, &ft_access, NULL);
+        adjust_time_offset(&ft_access, offset);
+        SetFileTime(file_handle, NULL, &ft_access, &ft_preserved);
     } else {
-        GetFileTime(file_handle, NULL, NULL, &ft_mod);
-        adjust_time_offset(&ft_mod, offset);
-        SetFileTime(file_handle, NULL, &ft_preserved, &ft_mod);
+        GetFileTime(file_handle, NULL, NULL, &ft_write);
+        adjust_time_offset(&ft_write, offset);
+        SetFileTime(file_handle, NULL, &ft_preserved, &ft_write);
     }
 }
 
@@ -430,20 +430,20 @@ static reference_timestamps_t *get_ref_timestamp(const TCHAR *filename) {
         return NULL;
     }
 
-    result->access_time = attr.ftLastAccessTime;
-    result->modified_time = attr.ftLastWriteTime;
+    result->last_access_time = attr.ftLastAccessTime;
+    result->last_write_time = attr.ftLastWriteTime;
 
     if (config.time_offset != 0) {
-        bool chg_acc = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_ACC);
-        bool chg_mod = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_MOD);
+        bool change_access = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS);
+        bool change_write = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE);
 
-        if (chg_acc && chg_mod) {
-            adjust_time_offset(&result->access_time, config.time_offset);
-            adjust_time_offset(&result->modified_time, config.time_offset);
-        } else if (chg_acc) {
-            adjust_time_offset(&result->access_time, config.time_offset);
+        if (change_access && change_write) {
+            adjust_time_offset(&result->last_access_time, config.time_offset);
+            adjust_time_offset(&result->last_write_time, config.time_offset);
+        } else if (change_access) {
+            adjust_time_offset(&result->last_access_time, config.time_offset);
         } else {
-            adjust_time_offset(&result->modified_time, config.time_offset);
+            adjust_time_offset(&result->last_write_time, config.time_offset);
         }
     }
 
@@ -478,15 +478,15 @@ static LPFILETIME get_current_filetime(void) {
  * An open handle to the file to set its timestamp.
  */
 static void set_file_timestamp(HANDLE file_handle) {
-    bool chg_acc = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_ACC);
-    bool chg_mod = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_MOD);
+    bool change_access = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS);
+    bool change_write = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE);
 
     if (config.ref_stamps) {
         SetFileTime(
             file_handle,
             NULL,
-            chg_acc ? &config.ref_stamps->access_time : &ft_preserved,
-            chg_mod ? &config.ref_stamps->modified_time : &ft_preserved
+            change_access ? &config.ref_stamps->last_access_time : &ft_preserved,
+            change_write ? &config.ref_stamps->last_write_time : &ft_preserved
         );
     } else {
         // Custom timestamp not specified but an adjustment option is
@@ -498,8 +498,8 @@ static void set_file_timestamp(HANDLE file_handle) {
         SetFileTime(
             file_handle,
             NULL,
-            chg_acc ? config.stamp : &ft_preserved,
-            chg_mod ? config.stamp : &ft_preserved
+            change_access ? config.stamp : &ft_preserved,
+            change_write ? config.stamp : &ft_preserved
         );
     }
 }
@@ -566,7 +566,7 @@ int _tmain(int argc, TCHAR **argv) {
                 hhmmss_adjustment = opt_arg;
                 break;
             case 'a':
-                config.change_time_flags |= FLAG_CHANGE_TIME_ACC;
+                config.change_time_flags |= FLAG_CHANGE_TIME_LAST_ACCESS;
                 break;
             case 'c':
                 config.no_create = true;
@@ -578,7 +578,7 @@ int _tmain(int argc, TCHAR **argv) {
                 print_usage_info();
                 goto clean_exit;
             case 'm':
-                config.change_time_flags |= FLAG_CHANGE_TIME_MOD;
+                config.change_time_flags |= FLAG_CHANGE_TIME_LAST_WRITE;
                 break;
             case 'r':
                 stamp_ref_file_input = opt_arg;
@@ -660,7 +660,7 @@ int _tmain(int argc, TCHAR **argv) {
 
     // Activate both flags if none are specified in options
     if (config.change_time_flags == 0) {
-        config.change_time_flags = (FLAG_CHANGE_TIME_MOD | FLAG_CHANGE_TIME_ACC);
+        config.change_time_flags = (FLAG_CHANGE_TIME_LAST_ACCESS | FLAG_CHANGE_TIME_LAST_WRITE);
     }
 
     for (; opt_index < argc; opt_index++) {
