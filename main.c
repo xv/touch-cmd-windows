@@ -249,23 +249,26 @@ static void adjust_file_timestamp(HANDLE file_handle, int offset) {
     bool change_access = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS);
     bool change_write = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE);
 
-    FILETIME ft_access = { 0 };
-    FILETIME ft_write = { 0 };
+    FILETIME ft_access, ft_write;
 
-    if (change_access && change_write) {
-        GetFileTime(file_handle, NULL, &ft_access, &ft_write);
-        adjust_time_offset(&ft_access, offset);
-        adjust_time_offset(&ft_write, offset);
-        SetFileTime(file_handle, NULL, &ft_access, &ft_write);
-    } else if (change_access) {
-        GetFileTime(file_handle, NULL, &ft_access, NULL);
-        adjust_time_offset(&ft_access, offset);
-        SetFileTime(file_handle, NULL, &ft_access, &ft_preserved);
-    } else {
-        GetFileTime(file_handle, NULL, NULL, &ft_write);
-        adjust_time_offset(&ft_write, offset);
-        SetFileTime(file_handle, NULL, &ft_preserved, &ft_write);
+    if (!GetFileTime(file_handle, NULL, &ft_access, &ft_write)) {
+        return;
     }
+
+    FILETIME *ptr_access, *ptr_write;
+    ptr_access = ptr_write = &ft_preserved;
+
+    if (change_access) {
+        adjust_time_offset(&ft_access, offset);
+        ptr_access = &ft_access;
+    }
+
+    if (change_write) {
+        adjust_time_offset(&ft_write, offset);
+        ptr_write = &ft_write;
+    }
+
+    SetFileTime(file_handle, NULL, ptr_access, ptr_write);
 }
 
 /*!
@@ -433,17 +436,15 @@ static reference_timestamps_t *get_ref_timestamp(const TCHAR *filename) {
     result->last_access_time = attr.ftLastAccessTime;
     result->last_write_time = attr.ftLastWriteTime;
 
-    if (config.time_offset != 0) {
-        bool change_access = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS);
-        bool change_write = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE);
+    int offset = config.time_offset;
 
-        if (change_access && change_write) {
-            adjust_time_offset(&result->last_access_time, config.time_offset);
-            adjust_time_offset(&result->last_write_time, config.time_offset);
-        } else if (change_access) {
-            adjust_time_offset(&result->last_access_time, config.time_offset);
-        } else {
-            adjust_time_offset(&result->last_write_time, config.time_offset);
+    if (offset != 0) {
+        if (HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS)) {
+            adjust_time_offset(&result->last_access_time, offset);
+        }
+
+        if (HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE)) {
+            adjust_time_offset(&result->last_write_time, offset);
         }
     }
 
@@ -480,6 +481,10 @@ static LPFILETIME get_current_filetime(void) {
 static void set_file_timestamp(HANDLE file_handle) {
     bool change_access = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS);
     bool change_write = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE);
+
+    if (!(change_access || change_write)) {
+        return;
+    }
 
     if (config.ref_stamps) {
         SetFileTime(
