@@ -1,5 +1,5 @@
 param (
-    [string]$p = "x86"
+    [string]$p = "x64"
 )
 
 $platforms = ("x86", "x64")
@@ -9,7 +9,7 @@ if (!($platforms -contains $p)) {
     Exit
 }
 
-$exeDirName = if ($p -eq "x86") { "Win32" } else { "x64" }
+$exeDirName = if ($p -eq "x86") { "Win32" } else { $p }
 $exePath = "release\$exeDirName\touch.exe"
 
 if (-Not (Test-Path $exePath)) {
@@ -18,7 +18,7 @@ if (-Not (Test-Path $exePath)) {
 }
 
 function Get-SoftwareVersion {
-    $versionFile = "..\version.h"
+    $versionFile = "..\src\version.h"
 
     $defMajor = "#define VER_MAJOR"
     $defMinor = "#define VER_MINOR"

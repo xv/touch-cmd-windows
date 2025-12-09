@@ -22,9 +22,9 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{7debf5ae-c3bd-4408-b2d4-82f734911ebd}</ProjectGuid>
-    <RootNamespace>TouchCmdWindows</RootNamespace>
+    <RootNamespace>touch</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>TouchCmdWindows</ProjectName>
+    <ProjectName>touch</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -171,19 +171,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\concolors.c" />
-    <ClCompile Include="..\errmsg.c" />
-    <ClCompile Include="..\getopt.c" />
-    <ClCompile Include="..\main.c" />
+    <ClCompile Include="..\src\concolors.c" />
+    <ClCompile Include="..\src\errmsg.c" />
+    <ClCompile Include="..\src\getopt.c" />
+    <ClCompile Include="..\src\main.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\concolors.h" />
-    <ClInclude Include="..\errmsg.h" />
-    <ClInclude Include="..\getopt.h" />
-    <ClInclude Include="..\version.h" />
+    <ClInclude Include="..\src\concolors.h" />
+    <ClInclude Include="..\src\errmsg.h" />
+    <ClInclude Include="..\src\getopt.h" />
+    <ClInclude Include="..\src\version.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\touch.rc" />
+    <ResourceCompile Include="..\src\touch.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
