@@ -15,35 +15,35 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\main.c">
+    <ClCompile Include="..\src\concolors.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\concolors.c">
+    <ClCompile Include="..\src\errmsg.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\getopt.c">
+    <ClCompile Include="..\src\getopt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\errmsg.c">
+    <ClCompile Include="..\src\main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\concolors.h">
+    <ClInclude Include="..\src\concolors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\getopt.h">
+    <ClInclude Include="..\src\errmsg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\errmsg.h">
+    <ClInclude Include="..\src\getopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\version.h">
+    <ClInclude Include="..\src\version.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\touch.rc">
+    <ResourceCompile Include="..\src\touch.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
