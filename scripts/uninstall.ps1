@@ -16,10 +16,11 @@ if (-Not (Test-IsAdmin)) {
  }
  
 $cmdName = "touch"
+$cmdDir = "$(Join-Path $PSScriptRoot "\")"
 
 # Note: assumes this path is not the first entry in PATH, hence the ';'
 # It's very unlikely that it could be the first entry, but not impossible either
-$lookup = ";$PSScriptRoot"
+$lookup = ";$cmdDir"
 
 $installed = $null -ne (
     Get-Command $cmdName `
@@ -34,18 +35,18 @@ if ($installed -and ($env:PATH -like "*$lookup*")) {
 $regEnvPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
 $regPathVal = (Get-ItemProperty $regEnvPath).Path
 
+if (-Not ($regPathVal -like "*$lookup*")) {
+    Write-Host "Could not find '$cmdDir' in PATH." -f Red
+    Exit 1
+}
+
 # Backup the registry key
 Invoke-Command  {
     reg export `
         $regEnvPath.Replace(":", $null) `
-        "$PSScriptRoot\$(Split-Path -Path $regEnvPath -Leaf).bak.reg" `
+        "$(Join-Path $cmdDir "$(Split-Path -Path $regEnvPath -Leaf).bak.reg")" `
         /y
 } | out-null
-
-if (-Not ($regPathVal -like "*$lookup*")) {
-    Write-Host "Could not find '$PSScriptRoot' in PATH." -f Red
-    Exit
-}
 
 $regPathValNew = $regPathVal.Replace($lookup, $null)
 
@@ -54,4 +55,4 @@ Set-ItemProperty `
     -Name Path `
     -Value $regPathValNew
 
-Write-Host "Directory '$PSScriptRoot' has been removed from PATH." -f Green
+Write-Host "Directory '$cmdDir' has been removed from PATH." -f Green
