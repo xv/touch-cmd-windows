@@ -14,7 +14,7 @@ The `[...]` part means you can specify more than one file and as many files as y
 |---------------|:------------|
 | `-A` *offset* | Adjust the timestamps of a file by an offset specified by the *offset* argument, which must be in the format `[-]HH[mm][ss]`, where `HH` is a 2-digit numerical representation of hours between 0 to 99; `mm` is a 2-digit numerical representation of minutes between 0 and 59; and `ss` is a 2-digit numerical representation of seconds between 0 and 59. A negative offset will move time backward. If a file does not exist, it will be created with adjusted timestamps, unless the `-c` option is specified.
 | `-a`          | Change only the *last access* timestamp. The *last modified* timestamp will not be changed unless `-m` is specified. |
-| `-C`          | Change only the *creation* timestamp. Neither the *last access* or *last modified* timestamps will be changed unless `-a` or `-m` (or both) are spcified. |
+| `-C`          | Change only the *creation* timestamp. Neither the *last access* or *last modified* timestamps will be changed unless `-a` or `-m` (or both) are specified. |
 | `-c`          | Do not create a new file if the file specified does not exist. The program will not display a diagnostic or error message and the exit value will not be affected. |
 | `-d`          | Do not dereference symbolic links. If this option is specified, the timestamp of the symbolic link itself will be changed rather than the file it refers to. |
 | `-m`          | Change only the *last modified* timestamp. The *last access* timestamp will not be changed unless `-a` is specified. |
@@ -38,6 +38,7 @@ You may refer to the [man page](https://man7.org/linux/man-pages/man1/touch.1.ht
 * Option `-d` (`--date=STRING`) on Linux is not supported here.
 * The format specifier of the `-t` option slightly differs from the Linux one (`[[CC]YY]MMDDhhmm[.ss]`).
 * The `-A` option does not exist on the Linux version of the command, but it does exist on macOS.
+* The `-C` option does not exist on either the Linux or macOS version of the command.
 
 File Operand Shell Expansion
 ----------------------------
@@ -79,38 +80,38 @@ If you get an error saying "*&lt;script&gt;.ps1 cannot be loaded because running
 ```PowerShell
 Set-ExecutionPolicy -Scope CurrentUser Bypass
 ```
-Once you are done, you may disable script executaion again via:
+Once you are done, you may disable script execution again via:
 ```PowerShell
 Set-ExecutionPolicy -Scope CurrentUser Restricted
 ```
 
 Build From Source
 -----------------
-This utility is written in C, using Visual Studio 2022 with MSVC v143 and Windows 10 SDK v2004 ([10.0.19041.0](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/#windows-10)). The solution and project files are present in the `/visualstudio/` directory. Simply run the IDE and build. Alternatively, there also a `.\build` PowerShell script to compile the code if you don't feel like firing up the IDE.
+This utility is written in C, using Visual Studio 2022 with MSVC v143 and Windows 10 SDK v2004 ([10.0.19041.0](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/#windows-10)). The solution and project files are present in the `visualstudio\` directory. Simply run the IDE and build. Alternatively, there also a `.\build` PowerShell script to compile the code if you don't feel like firing up the IDE.
 
 Usage Examples
 --------------
 ```powershell
-# Updates the Created timestamp of File1
+# Updates the "Created" timestamp of File1
 # If File1 does not exist, it will be created
 touch -C File1
 
-# Updates the Accessed And Modified timestamps of File1, File2, File3
+# Updates the "Accessed" And "Modified" timestamps of File1, File2, File3
 # If these files do not exist, they will not be created
 touch -amc File1 File2 File3
 
-# Changes the Modified timestamp of File to 2011-07-08 14:30:00 UTC
+# Changes the "Modified" timestamp of File to 2011-07-08 14:30:00 UTC
 touch -mt 201107081430Z File
 
-# Changes the Accessed and Modified timestamps of File to that of
+# Changes the "Accessed" and "Modified" timestamps of File to that of
 # RefFile, and if File does not exist, it will not be created
 touch -cr RefFile File
 
-# Changes the Modified timestamp of File to 2020-10-24 11:00:00 then
+# Changes the "Modified" timestamp of File to 2020-10-24 11:00:00 then
 # increments it by an 1 hr and 30 mins to become 2020-10-24 12:30:00
 touch -mA 0130 -t 202010241100 File
 
-# Decrements the Accessed and Modified timestamps of File by 10 mins
+# Decrements the "Accessed" and "Modified" timestamps of File by 10 mins
 touch -A -0010 File
 ```
 
@@ -135,7 +136,8 @@ If you need to check a file's timestamps after having called `touch`, I suggest 
 (gi File).LastAccessTime
 (gi File).LastWriteTime
 
-# You can also combine all three properties into a single output via:
+# You can also combine all three properties into a single output
+# gp and fl are aliases for Get-ItemProperty and Format-List
 gp File | fl CreationTime,LastAccessTime,LastWriteTime
 ```
 
