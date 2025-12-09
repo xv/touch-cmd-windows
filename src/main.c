@@ -20,15 +20,25 @@
 #define BUILD_PLAT "x86"
 #endif
 
-#define puts(str) _putts(_T(str))
-
-#define printf(fmt, ...) _tprintf(_T(fmt), ##__VA_ARGS__)
-
-#define printf_error(fmt, ...) {\
-    console_set_colors(COLOR_RED, COLOR_NONE);\
-    _ftprintf(stderr, _T(fmt), ##__VA_ARGS__);\
-    console_reset_colors();\
-};
+#define PROGRAM_USAGE_SUMMARY \
+"Syntax:\n\
+    touch [options] file [...]\n\n\
+Options:\n\
+    -A OFFSET    Adjust the timestamp time by an offset in the format\n\
+                 [-]HH[mm][ss]. A Negative offset moves time backward.\n\n\
+    -a           Change last access time only.\n\
+    -C           Change creation time only\n\
+    -c           Do not create files.\n\
+    -d           Do not follow symbolic links.\n\
+    -m           Change last modified time only.\n\
+    -r FILE      Set the timestamp from a reference file.\n\n\
+    -t STAMP     Set a timestamp in the format yyyyMMddHHmm[ss][Z].\n\
+                 You may append 'Z' at the end of the timestamp to\n\
+                 convert it from local time to UTC.\n\n\
+    -h           Display this help information and exit.\n\
+    -v           Display version information and exit.\n\n\
+Refer to the detailed documentation at:\n\
+https://github.com/xv/touch-cmd-windows"
 
 typedef unsigned short ushort;
 
@@ -84,26 +94,7 @@ console_screen_t *console;
  * Prints program usage information.
  */
 static void print_usage_info(void) {
-    puts(
-"\
-Syntax:\n\
-  touch [options] file [...]\n\n\
-Options:\n\
-  -A OFFSET    Adjust the timestamp time by an offset in the format\n\
-               [-]HH[mm][ss]. A Negative offset moves time backward.\n\n\
-  -a           Change last access time only.\n\
-  -C           Change creation time only\n\
-  -c           Do not create files.\n\
-  -d           Do not follow symbolic links.\n\
-  -m           Change last modified time only.\n\
-  -r FILE      Set the timestamp from a reference file.\n\n\
-  -t STAMP     Set a timestamp in the format yyyyMMddHHmm[ss][Z].\n\
-               You may append 'Z' at the end of the timestamp to\n\
-               convert it from local time to UTC.\n\n\
-  -h           Display this help information and exit.\n\
-  -v           Display version information and exit.\n\n\
-Refer to the detailed documentation at:\n\
-https://github.com/xv/touch-cmd-windows");
+    _putts(_T(PROGRAM_USAGE_SUMMARY));
 }
 
 /*!
@@ -111,7 +102,25 @@ https://github.com/xv/touch-cmd-windows");
  * Prints program version information.
  */ 
 static void print_version_info(void) {
-    printf("touch %s (%s)\n", _T(VERSION_STR), _T(BUILD_PLAT));
+    _tprintf(_T("touch %s (%s)\n"), _T(VERSION_STR), _T(BUILD_PLAT));
+}
+
+/*!
+ * @brief
+ * Prints a formatted error message to stderr in red.
+ * 
+ * @param fmt
+ * A printf-style format string.
+ */
+static void printf_error(_Printf_format_string_ const TCHAR *fmt, ...) {
+    console_set_colors(COLOR_RED, COLOR_NONE);
+
+    va_list args;
+    va_start(args, fmt);
+    _vftprintf(stderr, fmt, args);
+    va_end(args);
+
+    console_reset_colors();
 }
 
 /*!
@@ -570,7 +579,7 @@ int _tmain(int argc, TCHAR **argv) {
     console_init(&console);
 
     if (argc < 2) {
-        printf_error("%s: No argument is supplied.\n", prog_name);
+        printf_error(_T("%s: No argument is supplied.\n"), prog_name);
 
         status_ok = false;
         goto clean_exit;
@@ -611,11 +620,11 @@ int _tmain(int argc, TCHAR **argv) {
                 goto clean_exit;
             default:
                 if (opt_error == ERROR_ILLEGAL_OPT) {
-                    printf_error("%s: Option -%c is illegal.\n", prog_name, opt);
+                    printf_error(_T("%s: Option -%c is illegal.\n"), prog_name, opt);
                 } else if (opt_error == ERROR_OPT_REQ_ARG) {
-                    printf_error("%s: Option -%c requires an argument.\n", prog_name, opt);
+                    printf_error(_T("%s: Option -%c requires an argument.\n"), prog_name, opt);
                 } else {
-                    printf_error("%s: Option is missing or the format is invalid.\n", prog_name);
+                    printf_error(_T("%s: Option is missing or the format is invalid.\n"), prog_name);
                 }
 
                 status_ok = false;
@@ -625,7 +634,7 @@ int _tmain(int argc, TCHAR **argv) {
 
     // Didn't receive any files to touch
     if (opt_index == argc) {
-        printf_error("%s: Missing file operand.\n", prog_name);
+        printf_error(_T("%s: Missing file operand.\n"), prog_name);
 
         status_ok = false;
         goto clean_exit;
@@ -635,7 +644,7 @@ int _tmain(int argc, TCHAR **argv) {
     if (hhmmss_adjustment) {
         config.time_offset = parse_hhmmss(hhmmss_adjustment);
         if (config.time_offset == INT_MIN) {
-            printf_error("%s: Adjustment offset is invalid.\n", prog_name);
+            printf_error(_T("%s: Adjustment offset is invalid.\n"), prog_name);
 
             status_ok = false;
             goto clean_exit;
@@ -644,7 +653,7 @@ int _tmain(int argc, TCHAR **argv) {
 
     // Disallow timestamp inputs for multiple sources as it makes no sense
     if (stamp_input && stamp_ref_file_input) {
-        printf_error("%s: Cannot set timestamp from multiple sources.\n", prog_name);
+        printf_error(_T("%s: Cannot set timestamp from multiple sources.\n"), prog_name);
 
         status_ok = false;
         goto clean_exit;
@@ -654,7 +663,7 @@ int _tmain(int argc, TCHAR **argv) {
     if (stamp_input) {
         config.stamp = parse_timestamp_string(stamp_input);
         if (!config.stamp) {
-            printf_error("%s: Timestamp does not respect format.\n", prog_name);
+            printf_error(_T("%s: Timestamp does not respect format.\n"), prog_name);
 
             status_ok = false;
             goto clean_exit;
@@ -671,7 +680,7 @@ int _tmain(int argc, TCHAR **argv) {
     if (stamp_ref_file_input) {
         config.ref_stamps = get_ref_timestamp(stamp_ref_file_input);
         if (!config.ref_stamps) {
-            printf_error("%s: Reference timestamp could not be set.\n", prog_name);
+            printf_error(_T("%s: Reference timestamp could not be set.\n"), prog_name);
 
             status_ok = false;
             goto clean_exit;
@@ -688,7 +697,7 @@ int _tmain(int argc, TCHAR **argv) {
 
         if (!status_ok) {
             TCHAR *err_msg = get_win32_last_error_msg();
-            printf_error("%s: Could not open '%s' - %s", prog_name, argv[opt_index], err_msg);
+            printf_error(_T("%s: Could not open '%s' - %s"), prog_name, argv[opt_index], err_msg);
             HeapFree(GetProcessHeap(), 0, err_msg);
         };
     }
@@ -698,7 +707,7 @@ int _tmain(int argc, TCHAR **argv) {
 clean_exit:
 
     if (!status_ok && print_get_help) {
-        printf("Try '%s -h' to show help information.\n", prog_name);
+        _tprintf(_T("Try '%s -h' to show help information.\n"), prog_name);
     }
 
     free(console);
