@@ -108,7 +108,7 @@ https://github.com/xv/touch-cmd-windows");
  * Prints program version information.
  */ 
 static void print_version_info(void) {
-    printf("touch v%s (%s)\n", _T(VER_DISPVERSION_STR), _T(BUILD_PLAT));
+    printf("touch %s (%s)\n", _T(VERSION_STR), _T(BUILD_PLAT));
 }
 
 /*!

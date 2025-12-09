@@ -22,30 +22,21 @@ function Get-SoftwareVersion {
 
     $defMajor = "#define VER_MAJOR"
     $defMinor = "#define VER_MINOR"
-    $defRevis = "#define VER_REVIS"
-    $defBuild = "#define VER_BUILD"
+    $defPatch = "#define VER_PATCH"
 
     $major = $null
     $minor = $null
-    $revis = $null
-    $build = $null
+    $patch = $null
 
     Get-Content $versionFile | ForEach-Object {
         switch -Regex ($_) {
             "^$defMajor\s+(\d+)$" { $major = $Matches[1] }
             "^$defMinor\s+(\d+)$" { $minor = $Matches[1] }
-            "^$defRevis\s+(\d+)$" { $revis = $Matches[1] }
-            "^$defBuild\s+(\d+)$" { $build = $Matches[1] }
+            "^$defPatch\s+(\d+)$" { $patch = $Matches[1] }
         }
     }
 
-    $ver = "$major.$minor.$revis.$build"
-
-    if (($null -eq $build) -or ($build -eq 0)) {
-        $ver = $ver.Substring(0, $ver.LastIndexOf("."))
-    }
-
-    return $ver
+    return "$major.$minor.$patch"
 }
 
 $ver = Get-SoftwareVersion

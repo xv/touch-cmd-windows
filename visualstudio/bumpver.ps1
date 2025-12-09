@@ -1,16 +1,15 @@
 $path = "..\src\version.h"
-$pattern = "^\d+\.\d+\.\d+\.\d+$"
+$pattern = "^\d+\.\d+\.\d+$"
 
 $defMajor = "#define VER_MAJOR"
 $defMinor = "#define VER_MINOR"
-$defRevis = "#define VER_REVIS"
-$defBuild = "#define VER_BUILD"
+$defPatch = "#define VER_PATCH"
 
 function Get-CurrentVersion {
     $content = Get-Content $path
     $values = @()
 
-    foreach ($def in @($defMajor, $defMinor, $defRevis, $defBuild)) {
+    foreach ($def in @($defMajor, $defMinor, $defPatch)) {
         $match = $content | Select-String -Pattern "^$def (\d+)"
         if ($match) {
             $values += $match.Matches.Groups[1].Value
@@ -25,7 +24,7 @@ $curVer = Get-CurrentVersion
 Write-Host "Current version is $curVer"
 
 do {
-    $newVer = Read-Host "Enter a new version in the format #.#.#.#"
+    $newVer = Read-Host "Enter a new version in the format #.#.#"
     if ($newVer -notmatch $pattern) {
         Write-Host "Input is not in the correct format!" -f Red
     }
@@ -51,8 +50,7 @@ $newVerArr = $newVer.Split(".")
 (Get-Content $path) `
     -replace "^$defMajor \d+$", "$defMajor $($newVerArr[0])" `
     -replace "^$defMinor \d+$", "$defMinor $($newVerArr[1])" `
-    -replace "^$defRevis \d+$", "$defRevis $($newVerArr[2])" `
-    -replace "^$defBuild \d+$", "$defBuild $($newVerArr[3])" `
+    -replace "^$defPatch \d+$", "$defPatch $($newVerArr[2])" `
 | Set-Content $path
 
 Write-Host "Version bumped to $($newVerArr -join ".")" -f Green
