@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\concolors.c">
+    <ClCompile Include="..\src\console.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\errmsg.c">
@@ -29,7 +29,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\concolors.h">
+    <ClInclude Include="..\src\console.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\errmsg.h">

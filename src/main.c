@@ -11,7 +11,7 @@
 
 #include "errmsg.h"
 #include "getopt.h"
-#include "concolors.h"
+#include "console.h"
 #include "version.h"
 
 #ifdef _WIN64
@@ -87,8 +87,6 @@ const FILETIME ft_preserved = {
     .dwHighDateTime = 0xFFFFFFFF
 };
 
-console_screen_t *console;
-
 /*!
  * @brief
  * Prints program usage information.
@@ -103,24 +101,6 @@ static void print_usage_info(void) {
  */ 
 static void print_version_info(void) {
     _tprintf(_T("touch %s (%s)\n"), _T(VERSION_STR), _T(BUILD_PLAT));
-}
-
-/*!
- * @brief
- * Prints a formatted error message to stderr in red.
- * 
- * @param fmt
- * A printf-style format string.
- */
-static void printf_error(_Printf_format_string_ const TCHAR *fmt, ...) {
-    console_set_colors(COLOR_RED, COLOR_NONE);
-
-    va_list args;
-    va_start(args, fmt);
-    _vftprintf(stderr, fmt, args);
-    va_end(args);
-
-    console_reset_colors();
 }
 
 /*!
@@ -566,6 +546,8 @@ static bool touch(const TCHAR *filename, bool follow_symlinks) {
 }
 
 int _tmain(int argc, TCHAR **argv) {
+    console_t *console = console_open();
+
     bool status_ok = true;
     bool print_get_help = true;
 
@@ -576,10 +558,8 @@ int _tmain(int argc, TCHAR **argv) {
     TCHAR *stamp_input = NULL;
     TCHAR *stamp_ref_file_input = NULL;
 
-    console_init(&console);
-
     if (argc < 2) {
-        printf_error(_T("%s: No argument is supplied.\n"), prog_name);
+        console_printf_error(console, _T("%s: No argument is supplied.\n"), prog_name);
 
         status_ok = false;
         goto clean_exit;
@@ -620,11 +600,11 @@ int _tmain(int argc, TCHAR **argv) {
                 goto clean_exit;
             default:
                 if (opt_error == ERROR_ILLEGAL_OPT) {
-                    printf_error(_T("%s: Option -%c is illegal.\n"), prog_name, opt);
+                    console_printf_error(console, _T("%s: Option -%c is illegal.\n"), prog_name, opt);
                 } else if (opt_error == ERROR_OPT_REQ_ARG) {
-                    printf_error(_T("%s: Option -%c requires an argument.\n"), prog_name, opt);
+                    console_printf_error(console, _T("%s: Option -%c requires an argument.\n"), prog_name, opt);
                 } else {
-                    printf_error(_T("%s: Option is missing or the format is invalid.\n"), prog_name);
+                    console_printf_error(console, _T("%s: Option is missing or the format is invalid.\n"), prog_name);
                 }
 
                 status_ok = false;
@@ -634,7 +614,7 @@ int _tmain(int argc, TCHAR **argv) {
 
     // Didn't receive any files to touch
     if (opt_index == argc) {
-        printf_error(_T("%s: Missing file operand.\n"), prog_name);
+        console_printf_error(console, _T("%s: Missing file operand.\n"), prog_name);
 
         status_ok = false;
         goto clean_exit;
@@ -644,7 +624,7 @@ int _tmain(int argc, TCHAR **argv) {
     if (hhmmss_adjustment) {
         config.time_offset = parse_hhmmss(hhmmss_adjustment);
         if (config.time_offset == INT_MIN) {
-            printf_error(_T("%s: Adjustment offset is invalid.\n"), prog_name);
+            console_printf_error(console, _T("%s: Adjustment offset is invalid.\n"), prog_name);
 
             status_ok = false;
             goto clean_exit;
@@ -653,7 +633,7 @@ int _tmain(int argc, TCHAR **argv) {
 
     // Disallow timestamp inputs for multiple sources as it makes no sense
     if (stamp_input && stamp_ref_file_input) {
-        printf_error(_T("%s: Cannot set timestamp from multiple sources.\n"), prog_name);
+        console_printf_error(console, _T("%s: Cannot set timestamp from multiple sources.\n"), prog_name);
 
         status_ok = false;
         goto clean_exit;
@@ -663,7 +643,7 @@ int _tmain(int argc, TCHAR **argv) {
     if (stamp_input) {
         config.stamp = parse_timestamp_string(stamp_input);
         if (!config.stamp) {
-            printf_error(_T("%s: Timestamp does not respect format.\n"), prog_name);
+            console_printf_error(console, _T("%s: Timestamp does not respect format.\n"), prog_name);
 
             status_ok = false;
             goto clean_exit;
@@ -680,7 +660,7 @@ int _tmain(int argc, TCHAR **argv) {
     if (stamp_ref_file_input) {
         config.ref_stamps = get_ref_timestamp(stamp_ref_file_input);
         if (!config.ref_stamps) {
-            printf_error(_T("%s: Reference timestamp could not be set.\n"), prog_name);
+            console_printf_error(console, _T("%s: Reference timestamp could not be set.\n"), prog_name);
 
             status_ok = false;
             goto clean_exit;
@@ -697,7 +677,7 @@ int _tmain(int argc, TCHAR **argv) {
 
         if (!status_ok) {
             TCHAR *err_msg = get_win32_last_error_msg();
-            printf_error(_T("%s: Could not open '%s' - %s"), prog_name, argv[opt_index], err_msg);
+            console_printf_error(console, _T("%s: Could not open '%s' - %s"), prog_name, argv[opt_index], err_msg);
             HeapFree(GetProcessHeap(), 0, err_msg);
         };
     }

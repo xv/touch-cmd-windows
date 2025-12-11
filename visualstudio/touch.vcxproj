@@ -171,13 +171,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\concolors.c" />
+    <ClCompile Include="..\src\console.c" />
     <ClCompile Include="..\src\errmsg.c" />
     <ClCompile Include="..\src\getopt.c" />
     <ClCompile Include="..\src\main.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\concolors.h" />
+    <ClInclude Include="..\src\console.h" />
     <ClInclude Include="..\src\errmsg.h" />
     <ClInclude Include="..\src\getopt.h" />
     <ClInclude Include="..\src\version.h" />
