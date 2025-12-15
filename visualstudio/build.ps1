@@ -1,6 +1,9 @@
-﻿# General-purpose MSBuild build script
-# Requires the presence of a Visual Studio installation along with the MSBuild component
-# Uses vswhere.exe (included in Visual Studio 2017 and later) to find the VS installation
+# General-purpose MSBuild build script
+#
+# The script works with either a full Visual Studio IDE installation that 
+# includes the MSBuild component or with a standalone Build Tools installation
+#
+# vswhere.exe requires Visual Studio/Build Tools 2017 and later
  
 param (
     [string]$c = "release",
@@ -34,12 +37,31 @@ if (!(Test-Path -Path $vsLocatorPath)) {
     Exit 1
 }
 
-$vsPath = &$vsLocatorPath `
-    -latest `
-    -requires Microsoft.Component.MSBuild `
-    -property installationPath `
+$vsProductIds = "BuildTools", "Community", "Professional", "Enterprise" |  ForEach-Object { 
+    "Microsoft.VisualStudio.Product.$_" 
+}
 
-Import-Module (Get-ChildItem $vsPath `
+$vsInstallPath = $null
+
+foreach ($productId in $vsProductIds) {
+    $path = & $vsLocatorPath `
+        -latest `
+        -products $productId `
+        -requires "Microsoft.Component.MSBuild" `
+        -property "installationPath"
+
+    if ($path) {
+        $vsInstallPath = $path
+        break
+    }
+}
+
+if (!$vsInstallPath) {
+    Write-Host "No suitable MSBuild installation was found." -f Red
+    Exit 1
+}
+
+Import-Module (Get-ChildItem $vsInstallPath `
     -Recurse -File `
     -Filter Microsoft.VisualStudio.DevShell.dll
 ).FullName -ErrorAction Stop
@@ -47,14 +69,14 @@ Import-Module (Get-ChildItem $vsPath `
 Write-Host "Entering Visual Studio Developer Shell..." -f Blue
 
 Enter-VsDevShell `
-    -VsInstallPath $vsPath `
+    -VsInstallPath $vsInstallPath `
     -SkipAutomaticLocation `
     -DevCmdArguments "-arch=x64 -no_logo"
 
 Write-Host "Creating a $c build for $p..." -f Blue
 
 MSBuild -nologo -verbosity:$v -noWarn:C5105 `
-    @(Get-ChildItem *.vcxproj) `
+    @(Get-ChildItem *.sln)[0] `
     "/p:configuration=$c" `
     "/p:platform=$p" `
     "/t:clean;restore;build"
