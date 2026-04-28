@@ -1,4 +1,4 @@
-/* main.c
+﻿/* main.c
  * Copyright (C) 2023 Jad Altahan (https://github.com/xv)
  *
  * This software may be modified and distributed under the terms
@@ -512,6 +512,23 @@ static void set_file_timestamp(HANDLE file_handle) {
 
 /*!
  * @brief
+ * Checks if the file at the given path exists.
+ *
+ * @param file_path
+ * Path to the file to check.
+ *
+ * @return
+ * true if the file exists; false otherwise.
+ */
+static bool file_exists(LPCTSTR path) {
+    DWORD attrs = GetFileAttributes(path);
+
+    return (attrs != INVALID_FILE_ATTRIBUTES &&
+           !(attrs & FILE_ATTRIBUTE_DIRECTORY));
+}
+
+/*!
+ * @brief
  * Changes the timestamp of the given file.
  * 
  * @param filename
@@ -658,11 +675,22 @@ int _tmain(int argc, TCHAR **argv) {
 
     // Process file-referenced timestamp
     if (stamp_ref_file_input) {
+        if (!file_exists(stamp_ref_file_input)) {
+            console_printf_error(console, _T("%s: Reference file does not exist.\n"), prog_name);
+
+            status_ok = false;
+            print_get_help = false;
+
+            goto clean_exit;
+        }
+
         config.ref_stamps = get_ref_timestamp(stamp_ref_file_input);
         if (!config.ref_stamps) {
             console_printf_error(console, _T("%s: Reference timestamp could not be set.\n"), prog_name);
 
             status_ok = false;
+            print_get_help = false;
+
             goto clean_exit;
         }
     }
