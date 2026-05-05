@@ -1,6 +1,6 @@
-What Is This
-------------
-Have you ever used the `touch` command on a GNU/Linux or a macOS system? Well, this is exactly what this utility does. I frequently use this command on Linux to quickly create files and I find it rather annoying that I can't do the same thing when I am back on Windows, and so I decided to write a native Windows version of it to satisfy my needs. This is not a clone or fork of the GNU Coreutils `touch`, and although the core functionality is the same, there are some subtle differences between the two. These differences are discussed later in the document.
+About
+-----
+Have you ever used the `touch` command on a GNU/Linux or a macOS system? That's exactly what this utility does. I frequently use the command on Linux to quickly create files and find it rather annoying that I can't do the same thing when I am back on Windows, and so I decided to write a native Windows version of it to satisfy my needs. This is not a clone or fork of the GNU Coreutils `touch`, and although the core functionality is the same, there are some subtle differences between the two. These differences are discussed later in the document.
 
 The Command Line
 ----------------
@@ -12,14 +12,14 @@ The `[...]` part means you can specify more than one file and as many files as y
 ### Options
 | Item          | Description |
 |---------------|:------------|
-| `-A` *offset* | Adjust the timestamps of a file by an offset specified by the *offset* argument, which must be in the format `[-]HH[mm][ss]`, where `HH` is a 2-digit numerical representation of hours between 0 to 99; `mm` is a 2-digit numerical representation of minutes between 0 and 59; and `ss` is a 2-digit numerical representation of seconds between 0 and 59. A negative offset will move time backward. If a file does not exist, it will be created with adjusted timestamps, unless the `-c` option is specified.
+| `-A` *offset* | Adjust the timestamps of a file by an offset specified by the *offset* argument, which must be in the format `[-]HH[mm][ss]`, where `HH` is a 2-digit numerical representation of hours between 0 to 99; `mm` is a 2-digit numerical representation of minutes between 0 and 59; and `ss` is a 2-digit numerical representation of seconds between 0 and 59. A negative offset will move time backward.<br><br>If a file does not exist, it will be created with adjusted timestamps, unless the `-c` option is specified.
 | `-a`          | Change only the *last access* timestamp. The *last modified* timestamp will not be changed unless `-m` is specified. |
 | `-C`          | Change only the *creation* timestamp. Neither the *last access* or *last modified* timestamps will be changed unless `-a` or `-m` (or both) are specified. |
 | `-c`          | Do not create a new file if the file specified does not exist. The program will not display a diagnostic or error message and the exit value will not be affected. |
 | `-d`          | Do not dereference symbolic links. If this option is specified, the timestamp of the symbolic link itself will be changed rather than the file it refers to. |
 | `-m`          | Change only the *last modified* timestamp. The *last access* timestamp will not be changed unless `-a` is specified. |
 | `-r` *file*   | Use the timestamp of the file specified by the *file* argument instead of the current time of day. This option cannot be combined with `-t`. |
-| `-t` *stamp*  | Use the timestamp specified by the *stamp* argument, which must be in the format `yyyyMMddHHmm[ss][Z]`, where `yyyy` is a 4-digit numerical representation of the year (e.g., 1991); `MM` is a 2-digit numerical representation of the month (e.g., 05); `dd` is a 2-digit numerical representation of the day (e.g., 17); and `ss` is an optional 2-digit numerical representation of the seconds (e.g., 50). The timestamp is in local time by default; however, you may optionally append `Z` (case-sensitive) at the end to convert it to UTC time. This option cannot be combined with `-r`. |
+| `-t` *stamp*  | Use the timestamp specified by the *stamp* argument, which must be in the format `yyyyMMddHHmm[ss][Z]`, where `yyyy` is a 4-digit numerical representation of the year (e.g., 1991); `MM` is a 2-digit numerical representation of the month (e.g., 05); `dd` is a 2-digit numerical representation of the day (e.g., 17); and `ss` is an optional 2-digit numerical representation of the seconds (e.g., 50). The timestamp is in local time by default; however, you may optionally append `Z` (case-sensitive) at the end to convert it to UTC time.<br><br>This option cannot be combined with `-r`. |
 | `-h`          | Display help information and exit. |
 | `-v`          | Display version information and exit. |
 
@@ -31,7 +31,7 @@ The `[...]` part means you can specify more than one file and as many files as y
 
 Difference With GNU/Linux
 -------------------------
-You may refer to the [man page](https://man7.org/linux/man-pages/man1/touch.1.html) of the command for comparison, but in summary:
+You may refer to the [man page](https://man7.org/linux/man-pages/man1/touch.1.html) of the GNU/Linux command for comparison, but in summary:
 * Long option variants like `--no-create` for `-c` are not supported.
 * Here, we use `-d` instead of `-h` on Linux to specify no-dereference for symbolic links.
 * Option `--time=WORD` on Linux is not supported here. Use one or both of the `-a`, `-m` options instead.
@@ -39,29 +39,6 @@ You may refer to the [man page](https://man7.org/linux/man-pages/man1/touch.1.ht
 * The format specifier of the `-t` option slightly differs from the Linux one (`[[CC]YY]MMDDhhmm[.ss]`).
 * The `-A` option does not exist on the Linux version of the command, but it does exist on macOS.
 * The `-C` option does not exist on either the Linux or macOS version of the command.
-
-File Operand Shell Expansion
-----------------------------
-Some Unix shells like Bash have a brace expansion feature that can be useful when combined with `touch`. For example, in a Bash shell, you could execute `touch File{1..3}`, which would create the files `File1`, `File2`, and `File3` if they do not exist, or update their timestamps if they exist. This is also possible on Windows with PowerShell, although the syntax is a little bit wordy. Here are some examples:
-```powershell
-# Creates the files or updates timestamps of File1, File2, File2
-# Double quotes around filenames are a must!
-touch (1..3 | % { "File$_" }) 
-
-# A more complex version of the above that support string formatting
-# Creates the files or update the timestamps of File001, File002, File002
-touch (1..3 | % { "File{0:d3}" -f $_ })
-
-# Creates the files or updates timestamps of FileA, FileB, FileC
-touch ('A'[0]..'C'[0] | % { "File" + [char]$_ })
-
-# Updates the timestamps of all files ending with .txt
-touch -c (gi *.txt)
-
-# Updates the timestamps of all files in Dir/
-# It will NOT recurse subdirectories!
-touch -c (gi Dir/*)
-```
 
 Unicode Support
 ---------------
@@ -87,7 +64,7 @@ Set-ExecutionPolicy -Scope CurrentUser Restricted
 
 Build From Source
 -----------------
-This utility is written in C, using Visual Studio 2022 with MSVC v143 and Windows 10 SDK v2004 ([10.0.19041.0](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/#windows-10)). The solution and project files are present in the `visualstudio\` directory. Simply run the IDE and build. Alternatively, there also a `.\build` PowerShell script to compile the code if you don't feel like firing up the IDE.
+This utility is written in C, using Visual Studio 2022 with MSVC v143 and Windows 10 SDK v2004 ([10.0.19041.0](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/#windows-10)). The solution and project files are present in the `visualstudio\` directory. Simply run the IDE and build. Alternatively, there is also a `.\build` PowerShell script to compile the code if you only have a standalone Build Tools installation or don't feel like firing up the IDE.
 
 Usage Examples
 --------------
@@ -126,6 +103,28 @@ md Dir/Subdir/ | % { cd $_ } | touch File1
 
 # Same as the above but with a shorter syntax
 cd (md Dir/Subdir/) | touch File1
+```
+
+### File Operand Shell Expansion
+Some Unix shells like Bash have a brace expansion feature that can be useful when combined with `touch`. For example, in a Bash shell, you could execute `touch File{1..3}`, which would create the files `File1`, `File2`, and `File3` if they do not exist, or update their timestamps if they exist. This is also possible on Windows with PowerShell, although the syntax is a little bit wordy. Here are some examples:
+```powershell
+# Creates the files or updates timestamps of File1, File2, File2
+# Double quotes around filenames are a must!
+touch (1..3 | % { "File$_" }) 
+
+# A more complex version of the above that support string formatting
+# Creates the files or update the timestamps of File001, File002, File002
+touch (1..3 | % { "File{0:d3}" -f $_ })
+
+# Creates the files or updates timestamps of FileA, FileB, FileC
+touch ('A'[0]..'C'[0] | % { "File" + [char]$_ })
+
+# Updates the timestamps of all files ending with .txt
+touch -c (gi *.txt)
+
+# Updates the timestamps of all files in Dir/
+# It will NOT recurse subdirectories!
+touch -c (gi Dir/*)
 ```
 
 Verifying Timestamp Changes
