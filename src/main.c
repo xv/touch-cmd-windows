@@ -24,20 +24,42 @@
 "Syntax:\n\
     touch [options] file [...]\n\n\
 Options:\n\
-    -A OFFSET    Adjust the timestamp time by an offset in the format\n\
-                 [-]HH[mm][ss]. A Negative offset moves time backward.\n\n\
-    -a           Change last access time only.\n\
-    -C           Change creation time only\n\
-    -c           Do not create files.\n\
-    -d           Do not follow symbolic links.\n\
-    -m           Change last modified time only.\n\
-    -r FILE      Set the timestamp from a reference file.\n\n\
-    -t STAMP     Set a timestamp in the format yyyyMMddHHmm[ss][Z].\n\
-                 You may append 'Z' at the end of the timestamp to\n\
-                 convert it from local time to UTC.\n\n\
-    -h           Display this help information and exit.\n\
+    -A OFFSET    Adjust the timestamps of a file by an offset specified by the\n\
+                 OFFSET argument, which must be in the format [-]HH[mm][ss],\n\
+                 where HH is a 2-digit numerical representation of hours between\n\
+                 0 and 99; mm is a 2-digit numerical representation of minutes\n\
+                 between 0 and 59; and ss is a 2-digit numerical representation\n\
+                 of seconds between 0 and 59. A negative offset will move time\n\
+                 backward. If a file does not exist, it will be created with\n\
+                 adjusted timestamps, unless the -c option is specified.\n\n\
+    -a           Change only the last access timestamp. The last modified\n\
+                 timestamp will not be changed unless -m is specified.\n\n\
+    -C           Change only the creation timestamp. Neither the last access or\n\
+                 last modified timestamps will be changed unless -a or -m\n\
+                 (or both) are specified.\n\n\
+    -c           Do not create a new file if the file specified does not exist.\n\
+                 The program will not display a diagnostic or error message and\n\
+                 the exit value will not be affected.\n\n\
+    -d           Do not dereference symbolic links. If this option is specified,\n\
+                 the timestamp of the symbolic link itself will be changed\n\
+                 rather than the file it refers to.\n\n\
+    -m           Change only the last modified timestamp. The last access\n\
+                 timestamp will not be changed unless -a is specified.\n\n\
+    -r FILE      Use the timestamp of the file specified by the FILE argument\n\
+                 instead of the current time of day. This option cannot be\n\
+                 combined with -t.\n\n\
+    -t STAMP     Use the timestamp specified by the STAMP argument, which must\n\
+                 be in the format yyyyMMddHHmm[ss][Z], where yyyy is a 4-digit\n\
+                 numerical representation of the year; MM is a 2-digit numerical\n\
+                 representation of the month; dd is a 2-digit numerical\n\
+                 representation of the day; and ss is an optional 2-digit\n\
+                 numerical representation of the seconds. The timestamp is in\n\
+                 local time by default; however, you may optionally append Z\n\
+                 (case-sensitive) at the end to convert it to UTC time. This\n\
+                 option cannot be combined with -r.\n\n\
+    -h           Display this help information and exit.\n\n\
     -v           Display version information and exit.\n\n\
-Refer to the detailed documentation at:\n\
+This is an open-source utility whose code is found at:\n\
 https://github.com/xv/touch-cmd-windows"
 
 typedef unsigned short ushort;
