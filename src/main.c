@@ -136,7 +136,7 @@ static void print_version_info(void) {
  * 1 if the given string is all digits; false otherwise.
  */
 static bool is_digits(const TCHAR *str) {
-    if (*str == '\0') {
+    if (!str || *str == '\0') {
         return false;
     }
 
