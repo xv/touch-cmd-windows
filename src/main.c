@@ -5,8 +5,13 @@
  * of the MIT license. See the LICENSE file for details.
  */
 
+#define WIN32_LEAN_AND_MEAN
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <windows.h>
+#include <limits.h>
 #include <tchar.h>
 
 #include "errmsg.h"
