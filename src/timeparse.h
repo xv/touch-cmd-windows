@@ -13,14 +13,18 @@
 #include <windows.h>
 #include <tchar.h>
 
+typedef struct {
+    bool specified;
+    int minutes;
+} UtcOffset;
+
 /*!
  * @brief
- * Represents a timestamp containing a SYSTEMTIME value and a flag indicating
- * whether the time is UTC.    
+ * Represents a timestamp containing a SYSTEMTIME value and a UTC offset.
  */
 typedef struct {
     SYSTEMTIME st;
-    bool zulu;
+    UtcOffset utc_offset;
 } Timestamp;
 
  /*!
@@ -28,8 +32,8 @@ typedef struct {
   * Translates a timestamp string to a Timestamp struct.
   *
   * @param stamp
-  * Timestamp string in ISO 8601 basic (yyyyMMdd[THHmm[ss][.sss][Z]]) or
-  * extended format (yyyy-MM-dd[THH:mm[:ss][.sss][Z]]).
+  * Timestamp string in ISO 8601 basic (yyyyMMdd[THHmm[ss][.sss][Z|±hhmm]]) or
+  * extended format (yyyy-MM-dd[THH:mm[:ss][.sss][Z|±hh:mm]]).
   *
   * @param out
   * Pointer to a Timestamp struct that will receive the translated timestamp.

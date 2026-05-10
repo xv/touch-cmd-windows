@@ -30,6 +30,29 @@
 
 /*!
  * @brief
+ * Specifies the format style for parsing timestamps.
+ */
+typedef enum
+{
+    FORMAT_STYLE_BASIC,
+    FORMAT_STYLE_EXTENDED,
+} FormatStyle;
+
+/*!
+ * @brief
+ * Cursor-like context for parsing timestamps.
+ */
+typedef struct {
+    // Pointer to the current position in the input string being parsed
+    const TCHAR *ptr;
+    // Number of characters remaining in the input string from the current position
+    size_t len;
+    // Indicates the format style being parsed
+    FormatStyle fmt_style;
+} ParseContext;
+
+/*!
+ * @brief
  * Checks if the given year is a leap year.
  * 
  * @param year
@@ -39,6 +62,7 @@
  * true if the year is a leap year; false otherwise.
  */
 static bool is_leap_year(WORD year) {
+    // Appendix C https://www.rfc-editor.org/rfc/rfc3339
     return (year % 400 == 0) || ((year % 4 == 0) && (year % 100 != 0));
 }
 
@@ -153,6 +177,195 @@ static bool parse_u16(const TCHAR *str, size_t n, WORD *out) {
     return true;
 }
 
+static inline bool is_tz_start(TCHAR ch) {
+    return ch == 'Z' || ch == '+' || ch == '-';
+}
+
+static bool peek_char(const ParseContext *ctx, TCHAR ch) {
+    return (ctx->len > 0) && (*ctx->ptr == ch);
+}
+
+static bool consume_char(ParseContext *ctx, TCHAR ch) {
+    if (!peek_char(ctx, ch)) {
+        return false;
+    }
+
+    ctx->ptr++;
+    ctx->len--;
+
+    return true;
+}
+
+static bool consume_u16(ParseContext *ctx, size_t digits, WORD *out) {
+    if (ctx->len < digits) {
+        return false;
+    }
+
+    if (!parse_u16(ctx->ptr, digits, out)) {
+        return false;
+    }
+
+    ctx->ptr += digits;
+    ctx->len -= digits;
+
+    return true;
+}
+
+static bool parse_date(ParseContext *ctx, SYSTEMTIME *st) {
+    if (!consume_u16(ctx, 4, &st->wYear)) {
+        return false;
+    }
+
+    bool extended = ctx->fmt_style == FORMAT_STYLE_EXTENDED;
+
+    if (extended && !consume_char(ctx, '-')) {
+        return false;
+    }
+
+    if (!consume_u16(ctx, 2, &st->wMonth)) {
+        return false;
+    }
+
+    if (extended && !consume_char(ctx, '-')) {
+        return false;
+    }
+
+    if (!consume_u16(ctx, 2, &st->wDay)) {
+        return false;
+    }
+
+    return true;
+}
+
+static bool parse_time(ParseContext *ctx, SYSTEMTIME *st) {
+    if (!consume_u16(ctx, 2, &st->wHour)) {
+        return false;
+    }
+
+    bool extended = ctx->fmt_style == FORMAT_STYLE_EXTENDED;
+
+    // Reduced precision; HH only
+    // 
+    // Note: ISO 8601-1:2019§5.3.3 states that reduced precision is not allowed
+    //       when a time zone designator "Z" is present. But I'm going to allow
+    //       it here since this parser is meant to be based on ISO 8601's format
+    //       but not necessarily as strictly conforming
+    if (ctx->len == 0 || is_tz_start(*ctx->ptr)) {
+        return true;
+    }
+
+    if (extended && !consume_char(ctx, ':')) {
+        return false;
+    }
+
+    if (!consume_u16(ctx, 2, &st->wMinute)) {
+        return false;
+    }
+
+    // Reduced precision; HH:mm only
+    if (ctx->len == 0 || is_tz_start(*ctx->ptr)) {
+        return true;
+    }
+
+    if (extended && !consume_char(ctx, ':')) {
+        return false;
+    }
+
+    if (!consume_u16(ctx, 2, &st->wSecond)) {
+        return false;
+    }
+
+    if (consume_char(ctx, '.') &&
+       !consume_u16(ctx, 3, &st->wMilliseconds)) {
+        return false;
+    }
+
+    return true;
+}
+
+static bool parse_utc_offset(ParseContext *ctx, UtcOffset *out) {
+    if (ctx->len == 0) {
+        return true;
+    }
+
+    if (consume_char(ctx, 'Z')) {
+        out->specified = true;
+        out->minutes = 0;
+
+        return ctx->len == 0;
+    }
+
+    int sign;
+
+    if (consume_char(ctx, '+')) {
+        sign = 1;
+    } else if (consume_char(ctx, '-')) {
+        sign = -1;
+    } else {
+        // No timezone specified
+        return ctx->len == 0;
+    }
+
+    WORD hours;
+    WORD minutes = 0;
+
+    if (!consume_u16(ctx, 2, &hours)) {
+        return false;
+    }
+
+    bool extended =
+        ctx->fmt_style == FORMAT_STYLE_EXTENDED &&
+        consume_char(ctx, ':');
+
+    // Minutes optional
+    if (ctx->len > 0) {
+        if (!consume_u16(ctx, 2, &minutes)) {
+            return false;
+        }
+    }
+
+    if (extended && minutes == 0 && ctx->len != 0) {
+        return false;
+    }
+
+    if (hours > 23 || minutes > 59) {
+        return false;
+    }
+
+    // ISO 8601:2004§3.4.2 states: [±] represents a plus sign [+] if in
+    // combination with the following element a positive value or zero needs to
+    // be represented (in this case, unless explicitly stated otherwise, the
+    // plus sign shall not be omitted), or a minus sign [−] if in combination
+    // with the following element a negative value needs to be represented.
+    //
+    // ISO 8601-1:2019§3.2.4 states: a plus sign ["+"] to represent a positive
+    // value or zero (the plus sign shall not be omitted), or a minus sign ["-"]
+    // otherwise.
+    //
+    // Wikipedia for ISO 8601 states: It is not permitted to state a zero value
+    // time offset with a negative sign, as "−00:00", "−0000", or "−00".
+    //
+    // RFC 3339§4.3 states: If the time in UTC is known, but the offset to local
+    // time is unknown, this can be represented with an offset of "-00:00". This
+    // differs semantically from an offset of "Z" or "+00:00", which imply that
+    // UTC is the preferred reference point for the specified time.
+    //
+    // I'm going to reject it here since it doesn't make much sense to have a
+    // negative offset of zero
+    if (sign < 0 && hours == 0 && minutes == 0) {
+        return false;
+    }
+
+    if (ctx->len != 0) {
+        return false;
+    }
+
+    out->specified = true;
+    out->minutes = sign * ((int)hours * 60 + (int)minutes);
+
+    return true;
+}
+
 bool parse_timestamp(const TCHAR *stamp, Timestamp *out) {
     if (!stamp || *stamp == '\0' || !out) {
         return false; 
@@ -160,149 +373,47 @@ bool parse_timestamp(const TCHAR *stamp, Timestamp *out) {
 
     SYSTEMTIME st = { 0 };
 
-    bool extended = false;
-    bool zulu = false;
+    UtcOffset utc_offset = { .specified = false, .minutes = 0 };
 
-    const TCHAR *ptr = stamp;
-    size_t len = _tcslen(stamp);
+    ParseContext ctx = {
+        .ptr = stamp,
+        .len = _tcslen(stamp)
+    };
 
-    if (ptr[len - 1] == 'Z') {
-        zulu = true;
-        len--; // Subtract it now to simplify length checks later
-    }
+    bool extended =
+        ctx.len >= ISO8601_DATE_EXTEN_LEN &&
+        stamp[4] == '-' &&
+        stamp[7] == '-';
 
-    if (len >= ISO8601_DATE_EXTEN_LEN && ptr[4] == '-' /* yyyy[-] */) {
-        extended = true;
-    }
+    ctx.fmt_style = extended ? FORMAT_STYLE_EXTENDED : FORMAT_STYLE_BASIC;
 
-    if (extended) {
-        if (ptr[7] != '-' /* yyyy-MM[-] */) {
-            return false;
-        }
-
-        if (!parse_u16(ptr + 0, 4, &st.wYear) ||
-            !parse_u16(ptr + 5, 2, &st.wMonth) ||
-            !parse_u16(ptr + 8, 2, &st.wDay)) {
-            return false;
-        }
-
-        ptr += ISO8601_DATE_EXTEN_LEN;
-        len -= ISO8601_DATE_EXTEN_LEN;
-    } else {
-        if (len < ISO8601_DATE_BASIC_LEN /* yyyyMMdd */) {
-            return false;
-        }
-
-        if (!parse_u16(ptr + 0, 4, &st.wYear) ||
-            !parse_u16(ptr + 4, 2, &st.wMonth) ||
-            !parse_u16(ptr + 6, 2, &st.wDay)) {
-            return false;
-        }
-
-        ptr += ISO8601_DATE_BASIC_LEN;
-        len -= ISO8601_DATE_BASIC_LEN;
+    if (!parse_date(&ctx, &st)) {
+        return false;
     }
 
     // Time component
-    if (len > 0) {
-        if (*ptr++ != 'T') {
+    if (ctx.len != 0) {
+        if (!consume_char(&ctx, 'T')) {
             return false;
         }
 
-        len--;
-
-        if (extended) {
-            const size_t min_time_len = ISO8601_TIME_EXTEN_LEN - 3; // HH:mm
-
-            if (len < min_time_len || ptr[2] != ':' /* HH[:] */) {
-                return false;
-            }
-
-            if (!parse_u16(ptr + 0, 2, &st.wHour) ||
-                !parse_u16(ptr + 3, 2, &st.wMinute)) {
-                return false;
-            }
-
-            ptr += min_time_len;
-            len -= min_time_len;
-
-            if (len > 0 /* Assume seconds remain */) {
-                const size_t sec_len = 3; // :ss
-
-                if (len < sec_len || ptr[0] != ':' /* [:]ss */) {
-                    return false;
-                }
-
-                if (!parse_u16(ptr + 1, 2, &st.wSecond)) {
-                    return false;
-                }
-
-                ptr += sec_len;
-                len -= sec_len;
-            }  
-        } else {
-            const size_t min_time_len = ISO8601_TIME_BASIC_LEN - 2; // HHmm
-
-            if (len < min_time_len) {
-                return false;
-            }
-
-            if (!parse_u16(ptr + 0, 2, &st.wHour) ||
-                !parse_u16(ptr + 2, 2, &st.wMinute)) {
-                return false;
-            }
-
-            ptr += min_time_len;
-            len -= min_time_len;
-
-            if (len > 0 /* Assume seconds remain */) {
-                const size_t sec_len = 2; // ss
-
-                if (len < sec_len) {
-                    return false;
-                }
-
-                if (!parse_u16(ptr, 2, &st.wSecond)) {
-                    return false;
-                }
-
-                ptr += sec_len;
-                len -= sec_len;
-            }
+        if (!parse_time(&ctx, &st)) {
+            return false;   
         }
 
-        if (len > 0 /* Assume fractional seconds remain */) {
-            const size_t ms_len = 4; // .sss
-
-            if (len < ms_len || ptr[0] != '.') {
-                return false;
-            }
-
-            if (!parse_u16(ptr + 1, 3, &st.wMilliseconds)) {
-                return false;
-            }
-
-            ptr += ms_len;
-            len -= ms_len;
+        if (!parse_utc_offset(&ctx, &utc_offset)) {
+            return false;
         }
-    } else if (zulu) {
-        // Reject Zulu specifier since there's no time component
-        return false;
-    }
-
-    // There should be no more characters at this point; otherwise assume format
-    // is invalid since Zulu specifier was already handled earlier and UTC
-    // offsets are not supported
-    if (len != 0) {
-        return false;
     }
 
     if (!validate_systemtime(&st)) {
         return false;
     }
 
-    out->st = st;
-    out->zulu = zulu;
+    *out = (Timestamp) {
+        .st = st,
+        .utc_offset = utc_offset
+    };
 
     return true;
 }
