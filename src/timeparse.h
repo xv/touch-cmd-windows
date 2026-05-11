@@ -32,8 +32,8 @@ typedef struct {
   * Translates a timestamp string to a Timestamp struct.
   *
   * @param stamp
-  * Timestamp string in ISO 8601 basic (yyyyMMdd[THHmm[ss][.sss][Z|±hhmm]]) or
-  * extended format (yyyy-MM-dd[THH:mm[:ss][.sss][Z|±hh:mm]]).
+  * Timestamp string in ISO 8601 basic (yyyyMMdd[THH[mm[ss[.SSS]]][Z|±hh[mm]]])
+  * or extended format (yyyy-MM-dd[THH:mm[:ss[.SSS]][Z|±hh:mm]]).
   *
   * @param out
   * Pointer to a Timestamp struct that will receive the translated timestamp.

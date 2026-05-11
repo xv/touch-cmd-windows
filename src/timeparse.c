@@ -14,19 +14,7 @@
 #define SYSTIME_YEAR_MIN 1601
 #define SYSTIME_YEAR_MAX 30827
 
-#define ISO8601_DATE_BASIC_LEN 8  // yyyyMMdd
 #define ISO8601_DATE_EXTEN_LEN 10 // yyyy-MM-dd
-
-#define ISO8601_TIME_BASIC_LEN 6  // HHmmss
-#define ISO8601_TIME_EXTEN_LEN 8  // HH:mm:ss
-
-// yyyyMMddTHHmmss
-#define ISO8601_TIMESTAMP_BASIC_LEN \
-    (ISO8601_DATE_BASIC_LEN + 1 + ISO8601_TIME_BASIC_LEN)
-
-// yyyy-MM-ddTHH:mm:ss
-#define ISO8601_TIMESTAMP_EXTEN_LEN \
-    (ISO8601_DATE_EXTEN_LEN + 1 + ISO8601_TIME_EXTEN_LEN)
 
 /*!
  * @brief
@@ -177,14 +165,52 @@ static bool parse_u16(const TCHAR *str, size_t n, WORD *out) {
     return true;
 }
 
+/*!
+ * @brief
+ * Checks whether a character is a timezone designator ('Z', '+' or '-').
+ * 
+ * @param ch
+ * The character to check.
+ * 
+ * @return
+ * true if \p ch is a timezone designator; false otherwise.
+ */
 static inline bool is_tz_start(TCHAR ch) {
     return ch == 'Z' || ch == '+' || ch == '-';
 }
 
+/*!
+ * @brief
+ * Checks whether the current character in the parse context equals the
+ * specified character.
+ * 
+ * @param ctx
+ * Pointer to the current parse context.
+ * 
+ * @param ch
+ * Character to match.
+ *
+ * @return
+ * true if the current character equals \p ch; otherwise false.
+ */
 static bool peek_char(const ParseContext *ctx, TCHAR ch) {
     return (ctx->len > 0) && (*ctx->ptr == ch);
 }
 
+/*!
+ * @brief
+ * Consumes the current character in the parse context if it equals the
+ * specified character.
+ * 
+ * @param ctx
+ * Pointer to the current parse context.
+ * 
+ * @param ch
+ * The character to match and consume.
+ * 
+ * @return
+ * true if the character matched and was consumed; false otherwise.
+ */
 static bool consume_char(ParseContext *ctx, TCHAR ch) {
     if (!peek_char(ctx, ch)) {
         return false;
@@ -196,6 +222,25 @@ static bool consume_char(ParseContext *ctx, TCHAR ch) {
     return true;
 }
 
+/*!
+ * @brief
+ * Parses and consumes a 16-bit unsigned value represented by the specified
+ * number of digits from the parse context.
+ * 
+ * @param ctx
+ * Pointer to the current parse context.
+ * 
+ * @param digits
+ * Number of characters/digits to parse and consume.
+ * 
+ * @param out
+ * Pointer to a WORD where the parsed 16-bit value is written on success; not
+ * modified if parsing fails.
+ * 
+ * @return
+ * true if the digits in the parse context were successfully parsed and
+ * consumed; false otherwise.
+ */
 static bool consume_u16(ParseContext *ctx, size_t digits, WORD *out) {
     if (ctx->len < digits) {
         return false;
@@ -211,6 +256,20 @@ static bool consume_u16(ParseContext *ctx, size_t digits, WORD *out) {
     return true;
 }
 
+/*!
+ * @brief
+ * Parses a date from the parse context and, if present and valid, writes the
+ * year, month and day to \p st.
+ * 
+ * @param ctx
+ * Pointer to the current parse context.
+ * 
+ * @param st
+ * Pointer to a SYSTEMTIME structure that will receive the parsed date.
+ * 
+ * @return
+ * true if the date was successfully parsed and stored; false otherwise.
+ */
 static bool parse_date(ParseContext *ctx, SYSTEMTIME *st) {
     if (!consume_u16(ctx, 4, &st->wYear)) {
         return false;
@@ -237,6 +296,20 @@ static bool parse_date(ParseContext *ctx, SYSTEMTIME *st) {
     return true;
 }
 
+/*!
+ * @brief
+ * Parses time from the parse context and, if present and valid, writes the
+ * hour, minute, second, and millisecond to \p st.
+ *
+ * @param ctx
+ * Pointer to the current parse context.
+ *
+ * @param st
+ * Pointer to a SYSTEMTIME structure that will receive the parsed time.
+ *
+ * @return
+ * true if the time was successfully parsed and stored; false otherwise.
+ */
 static bool parse_time(ParseContext *ctx, SYSTEMTIME *st) {
     if (!consume_u16(ctx, 2, &st->wHour)) {
         return false;
@@ -245,13 +318,13 @@ static bool parse_time(ParseContext *ctx, SYSTEMTIME *st) {
     bool extended = ctx->fmt_style == FORMAT_STYLE_EXTENDED;
 
     // Reduced precision; HH only
+    //
+    // ISO 8601-1:2019§4.2.2.3 forbids hours-only expressions in extended format
     // 
-    // Note: ISO 8601-1:2019§5.3.3 states that reduced precision is not allowed
-    //       when a time zone designator "Z" is present. But I'm going to allow
-    //       it here since this parser is meant to be based on ISO 8601's format
-    //       but not necessarily as strictly conforming
+    // ISO 8601-1:2019§5.3.3,5.3.4.1 forbid UTC designator "Z" and offsets in
+    // extended format with hours-only expressions
     if (ctx->len == 0 || is_tz_start(*ctx->ptr)) {
-        return true;
+        return !extended;
     }
 
     if (extended && !consume_char(ctx, ':')) {
@@ -283,6 +356,21 @@ static bool parse_time(ParseContext *ctx, SYSTEMTIME *st) {
     return true;
 }
 
+/*!
+ * @brief
+ * Parses a UTC designator or offset from the parse context and, if present and
+ * valid, writes it to \p out.
+ * 
+ * @param ctx
+ * Pointer to the current parse context.
+ * 
+ * @param out
+ * Pointer to a UtcOffset struct that will receive the parsed offset.
+ * 
+ * @return
+ * true if the UTC designator or offset is empty or a valid offset was
+ * successfully parsed and stored; false on parse or validation error.
+ */
 static bool parse_utc_offset(ParseContext *ctx, UtcOffset *out) {
     if (ctx->len == 0) {
         return true;
@@ -313,18 +401,15 @@ static bool parse_utc_offset(ParseContext *ctx, UtcOffset *out) {
         return false;
     }
 
-    bool extended =
-        ctx->fmt_style == FORMAT_STYLE_EXTENDED &&
-        consume_char(ctx, ':');
+    bool extended = ctx->fmt_style == FORMAT_STYLE_EXTENDED;
 
-    // Minutes optional
-    if (ctx->len > 0) {
-        if (!consume_u16(ctx, 2, &minutes)) {
-            return false;
-        }
+    // ISO 8601-1:2019§5.3.4.1 forbids hours-only offsets in extended format
+    // but allows them in basic format
+    if (extended && !consume_char(ctx, ':')) {
+        return false;
     }
 
-    if (extended && minutes == 0 && ctx->len != 0) {
+    if (ctx->len > 0 && !consume_u16(ctx, 2, &minutes)) {
         return false;
     }
 
@@ -332,26 +417,12 @@ static bool parse_utc_offset(ParseContext *ctx, UtcOffset *out) {
         return false;
     }
 
-    // ISO 8601:2004§3.4.2 states: [±] represents a plus sign [+] if in
-    // combination with the following element a positive value or zero needs to
-    // be represented (in this case, unless explicitly stated otherwise, the
-    // plus sign shall not be omitted), or a minus sign [−] if in combination
-    // with the following element a negative value needs to be represented.
-    //
     // ISO 8601-1:2019§3.2.4 states: a plus sign ["+"] to represent a positive
     // value or zero (the plus sign shall not be omitted), or a minus sign ["-"]
     // otherwise.
     //
     // Wikipedia for ISO 8601 states: It is not permitted to state a zero value
     // time offset with a negative sign, as "−00:00", "−0000", or "−00".
-    //
-    // RFC 3339§4.3 states: If the time in UTC is known, but the offset to local
-    // time is unknown, this can be represented with an offset of "-00:00". This
-    // differs semantically from an offset of "Z" or "+00:00", which imply that
-    // UTC is the preferred reference point for the specified time.
-    //
-    // I'm going to reject it here since it doesn't make much sense to have a
-    // negative offset of zero
     if (sign < 0 && hours == 0 && minutes == 0) {
         return false;
     }
@@ -391,8 +462,10 @@ bool parse_timestamp(const TCHAR *stamp, Timestamp *out) {
         return false;
     }
 
-    // Time component
+    // Optional time component
     if (ctx.len != 0) {
+        // ISO 8601-1:2019§5.3.2: "T" is always present in basic format, but for
+        // extended format, it may be omitted in time-only expressions
         if (!consume_char(&ctx, 'T')) {
             return false;
         }
