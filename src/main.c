@@ -554,7 +554,7 @@ static bool file_exists(LPCTSTR path) {
  * Path to the file to touch.
  */
 static bool touch(const TCHAR *filename, bool follow_symlinks) {
-    bool create_new = !config.no_create;
+    const bool create_new = !config.no_create;
     int cw_flags = FILE_ATTRIBUTE_NORMAL;
 
     if (!follow_symlinks) {
@@ -572,7 +572,13 @@ static bool touch(const TCHAR *filename, bool follow_symlinks) {
     );
 
     if (file_handle == INVALID_HANDLE_VALUE) {
-        return create_new ? false : true;
+        const DWORD err = GetLastError();
+
+        const bool missing_file =
+            (err == ERROR_FILE_NOT_FOUND ||
+             err == ERROR_PATH_NOT_FOUND);
+
+        return (!create_new && missing_file);
     }
 
     set_file_time(file_handle);
