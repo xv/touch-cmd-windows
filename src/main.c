@@ -268,7 +268,7 @@ static void adjust_time_offset(FILETIME *ft, int offset) {
  * @param offset
  * Time represented in seconds.
  */
-static void adjust_file_timestamp(HANDLE file_handle, int offset) {
+static void adjust_file_time(HANDLE file_handle, int offset) {
     FILETIME ft_creation, ft_access, ft_write;
 
     if (!GetFileTime(file_handle, &ft_creation, &ft_access, &ft_write)) {
@@ -440,7 +440,7 @@ static bool parse_timestamp_string(TCHAR *stamp, FILETIME *out) {
  * Pointer to a reference_timestamps struct containing timestamps retrieved
  * from the specified file.
  */
-static bool get_ref_timestamp(const TCHAR *filename, reference_timestamps_t *out) {
+static bool get_ref_timestamps(const TCHAR *filename, reference_timestamps_t *out) {
     if (!out) {
         return false;
     }
@@ -481,7 +481,7 @@ static bool get_ref_timestamp(const TCHAR *filename, reference_timestamps_t *out
  * @return
  * Pointer to a FILETIME struct containing the current system date and time.
  */
-static bool get_current_filetime(FILETIME *out) {
+static bool get_current_file_time(FILETIME *out) {
     if (!out) {
         return false;
     }
@@ -497,7 +497,7 @@ static bool get_current_filetime(FILETIME *out) {
  * @param file_handle
  * An open handle to the file to set its timestamp.
  */
-static void set_file_timestamp(HANDLE file_handle) {
+static void set_file_time(HANDLE file_handle) {
     bool change_creation = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_CREATION);
     bool change_access = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS);
     bool change_write = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE);
@@ -516,7 +516,7 @@ static void set_file_timestamp(HANDLE file_handle) {
     } else {
         // Custom timestamp not specified but an adjustment option is
         if (config.time_offset != 0 && !config.has_custom_stamp) {
-            adjust_file_timestamp(file_handle, config.time_offset);
+            adjust_file_time(file_handle, config.time_offset);
             return;
         }
 
@@ -575,7 +575,7 @@ static bool touch(const TCHAR *filename, bool follow_symlinks) {
         return create_new ? false : true;
     }
 
-    set_file_timestamp(file_handle);
+    set_file_time(file_handle);
 
     CloseHandle(file_handle);
     return true;
@@ -694,7 +694,7 @@ int _tmain(int argc, TCHAR **argv) {
         // No need for current time if we're using a ref or only adjusting
         // a file's timestamps
         if (!(stamp_ref_file_input || hhmmss_adjustment)) {
-            get_current_filetime(&config.custom_stamp);
+            get_current_file_time(&config.custom_stamp);
             config.has_custom_stamp = true;
         }
     }
@@ -710,7 +710,7 @@ int _tmain(int argc, TCHAR **argv) {
             goto clean_exit;
         }
 
-        if (!get_ref_timestamp(stamp_ref_file_input, &config.ref_stamps)) {
+        if (!get_ref_timestamps(stamp_ref_file_input, &config.ref_stamps)) {
             console_printf_error(console, _T("%s: Reference timestamp could not be set.\n"), prog_name);
 
             status_ok = false;
