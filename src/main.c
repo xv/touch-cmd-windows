@@ -648,6 +648,11 @@ int _tmain(int argc, TCHAR **argv) {
         }
     }
 
+    // Activate both flags if none are specified in options
+    if (config.change_time_flags == 0) {
+        config.change_time_flags = (FLAG_CHANGE_TIME_LAST_ACCESS | FLAG_CHANGE_TIME_LAST_WRITE);
+    }
+
     // Didn't receive any files to touch
     if (opt_index == argc) {
         console_printf_error(console, _T("%s: Missing file operand.\n"), prog_name);
@@ -715,11 +720,6 @@ int _tmain(int argc, TCHAR **argv) {
         }
 
         config.has_ref_stamps = true;
-    }
-
-    // Activate both flags if none are specified in options
-    if (config.change_time_flags == 0) {
-        config.change_time_flags = (FLAG_CHANGE_TIME_LAST_ACCESS | FLAG_CHANGE_TIME_LAST_WRITE);
     }
 
     for (; opt_index < argc; opt_index++) {
