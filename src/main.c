@@ -729,9 +729,11 @@ int _tmain(int argc, TCHAR **argv) {
     }
 
     for (; opt_index < argc; opt_index++) {
-        status_ok &= touch(argv[opt_index], !config.no_dereference);
+        bool ok = touch(argv[opt_index], !config.no_dereference);
 
-        if (!status_ok) {
+        status_ok &= ok;
+
+        if (!ok) {
             TCHAR *err_msg = get_win32_last_error_msg();
             console_printf_error(console, _T("%s: Could not open '%s' - %s"), prog_name, argv[opt_index], err_msg);
             HeapFree(GetProcessHeap(), 0, err_msg);
@@ -748,6 +750,5 @@ clean_exit:
 
     free(console);
 
-    int exit_code = status_ok ? EXIT_SUCCESS : EXIT_FAILURE;
-    return exit_code;
+    return status_ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
