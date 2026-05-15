@@ -10,9 +10,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdnoreturn.h>
 #include <windows.h>
 #include <limits.h>
 #include <tchar.h>
+#include <assert.h>
 
 #include "errmsg.h"
 #include "getopt.h"
@@ -74,38 +76,43 @@ typedef enum timestamp_format {
     TF_UTC
 } timestamp_format_t;
 
+typedef enum timestamp_mode {
+    TM_NOW,
+    TM_EXPLICIT,
+    TM_RELATIVE
+} timestamp_mode_t;
+
+typedef enum file_time_flags
+{
+    FT_CREATION = 1 << 0,
+    FT_ACCESS = 1 << 1,
+    FT_WRITE = 1 << 2
+} file_time_flags_t;
+
 typedef struct reference_timestamps {
-    FILETIME creation_time;
-    FILETIME last_access_time;
-    FILETIME last_write_time;
+    FILETIME creation;
+    FILETIME access;
+    FILETIME write;
 } reference_timestamps_t;
 
+typedef struct timestamp_operation {
+    timestamp_mode_t mode;
+    file_time_flags_t ft_flags;
+    FILETIME creation;
+    FILETIME access;
+    FILETIME write;
+    int adjustment_seconds;
+} timestamp_operation_t;
+
 typedef struct program_config {
-    int change_time_flags;
-    int time_offset;
     bool no_create;
     bool no_dereference;
-    bool has_ref_stamps;
-    bool has_custom_stamp;
-    reference_timestamps_t ref_stamps;
-    FILETIME custom_stamp;
     timestamp_format_t stamp_format;
 } program_config_t;
 
-#define FLAG_CHANGE_TIME_CREATION    (1 << 0)
-#define FLAG_CHANGE_TIME_LAST_ACCESS (1 << 1)
-#define FLAG_CHANGE_TIME_LAST_WRITE  (1 << 2)
-#define HAS_FLAG(flags, mask) ((flags & mask) != 0)
-
 static program_config_t config = {
-    .change_time_flags = 0,
-    .time_offset = 0,
     .no_create = false,
     .no_dereference = false,
-    .has_ref_stamps = false,
-    .has_custom_stamp = false,
-    .ref_stamps = { 0 },
-    .custom_stamp = { 0 },
     .stamp_format = TF_LOCAL
 };
 
@@ -118,6 +125,9 @@ const FILETIME ft_preserved = {
     .dwHighDateTime = 0xFFFFFFFF
 };
 
+static const TCHAR *prog_name;
+static console_t *console;
+
 /*!
  * @brief
  * Prints program usage information.
@@ -129,7 +139,7 @@ static void print_usage_info(void) {
 /*!
  * @brief
  * Prints program version information.
- */ 
+ */
 static void print_version_info(void) {
     _tprintf(_T("touch %s (%s)\n"), _T(VERSION_STR), _T(BUILD_PLAT));
 }
@@ -137,10 +147,10 @@ static void print_version_info(void) {
 /*!
  * @brief
  * Checks if a string consists of digits (0-9) only.
- * 
+ *
  * @param str
  * The string to check.
- * 
+ *
  * @return
  * 1 if the given string is all digits; false otherwise.
  */
@@ -163,32 +173,19 @@ static bool is_digits(const TCHAR *str) {
 /*!
  * @brief
  * Extracts the file name from a full path.
- * 
+ *
  * @param path
  * Path to the file to process.
- * 
+ *
  * @param rem_ext
  * If 1, the last occurrence of the file extension will be removed.
- * 
+ *
  * @return
  * File name without a path.
  */
-static TCHAR *get_name(TCHAR *path, bool rem_ext) {
-    TCHAR *name = _tcsrchr(path, '\\');
-    if (!name) {
-        return path;
-    }
-
-    name++;
-
-    if (rem_ext) {
-        TCHAR *dot = _tcsrchr(name, '.');
-        if (dot) {
-            *dot = '\0';
-        }
-    }
-
-    return name;
+static const TCHAR *get_name(const TCHAR *path) {
+    const TCHAR *name = _tcsrchr(path, '\\');
+    return name ? (name + 1) : path;
 }
 
 /*!
@@ -197,10 +194,10 @@ static TCHAR *get_name(TCHAR *path, bool rem_ext) {
  *
  * @param n
  * Original value.
- * 
+ *
  * @param min
  * Minimum value.
- * 
+ *
  * @param max
  * Maximum value.
  *
@@ -223,12 +220,10 @@ static inline ushort clamp_ushort(ushort n, ushort min, ushort max) {
  * Pointer to a FILETIME struct to receive the converted time.
  *
  * @return
- * 1 if the function succeeds; 0 otherwise.
+ * true if the function succeeds; false otherwise.
  */
-static bool local_time_to_file_time(const LPSYSTEMTIME system_time, LPFILETIME file_time) {
-    if (!system_time || !file_time) {
-        return false;
-    }
+static bool local_time_to_file_time(const SYSTEMTIME *system_time, FILETIME *file_time) {
+    assert(system_time && file_time);
 
     FILETIME ft_local;
     SystemTimeToFileTime(system_time, &ft_local);
@@ -247,6 +242,8 @@ static bool local_time_to_file_time(const LPSYSTEMTIME system_time, LPFILETIME f
  * Time represented in seconds.
  */
 static void adjust_time_offset(FILETIME *ft, int offset) {
+    assert(ft);
+
     ULARGE_INTEGER uli = {
         ft->dwLowDateTime,
         ft->dwHighDateTime
@@ -260,55 +257,20 @@ static void adjust_time_offset(FILETIME *ft, int offset) {
 
 /*!
  * @brief
- * Adjusts a file's timestamp by an offset.
- * 
- * @param file_handle
- * Handle to the file whose timestamp is to be adjusted.
- * 
- * @param offset
- * Time represented in seconds.
- */
-static void adjust_file_time(HANDLE file_handle, int offset) {
-    FILETIME ft_creation, ft_access, ft_write;
-
-    if (!GetFileTime(file_handle, &ft_creation, &ft_access, &ft_write)) {
-        return;
-    }
-
-    FILETIME *ptr_creation, *ptr_access, *ptr_write;
-    ptr_creation = NULL;
-    ptr_access = ptr_write = &ft_preserved;
-
-    if (HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_CREATION)) {
-        adjust_time_offset(&ft_creation, offset);
-        ptr_creation = &ft_creation;
-    }
-
-    if (HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS)) {
-        adjust_time_offset(&ft_access, offset);
-        ptr_access = &ft_access;
-    }
-
-    if (HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE)) {
-        adjust_time_offset(&ft_write, offset);
-        ptr_write = &ft_write;
-    }
-
-    SetFileTime(file_handle, ptr_creation, ptr_access, ptr_write);
-}
-
-/*!
- * @brief
  * Translates a timestamp to a FILETIME struct.
  *
  * @param stamp
  * Timestamp string in the format yyyyMMddHHmm[ss].
- * 
+ *
+ * @param out
+ * Pointer to a FILETIME struct to receive the translated timestamp.
+ *
  * @returns
- * Pointer to a FILETIME struct containing the translated timestamp.
- * Caller is responsible for freeing allocated memory.
+ * true if the timestamp was successfully translated; false otherwise.
  */
 static bool string_to_filetime(const TCHAR *stamp, FILETIME *out) {
+    assert(stamp && out);
+
     SYSTEMTIME st = { 0 };
 
     int num_fields_converted = _stscanf(
@@ -340,10 +302,6 @@ static bool string_to_filetime(const TCHAR *stamp, FILETIME *out) {
         SystemTimeToFileTime(&st, out);
     }
 
-    if (config.time_offset != 0) {
-        adjust_time_offset(out, config.time_offset);
-    }
-
     return true;
 }
 
@@ -359,6 +317,8 @@ static bool string_to_filetime(const TCHAR *stamp, FILETIME *out) {
  * on the operator parsed. Otherwise, INT_MIN is returned on failure.
  */
 static int parse_hhmmss(TCHAR *hhmmss) {
+    assert(hhmmss);
+
     bool neg = false;
 
     if (*hhmmss == '-') {
@@ -402,14 +362,19 @@ static int parse_hhmmss(TCHAR *hhmmss) {
 /*!
  * @brief
  * Parses a given timestamp to translate into a FILETIME struct.
- * 
+ *
  * @param stamp
  * The string to parse, in the format yyyyMMddHHmm[ss][Z].
- * 
+ *
+ * @param out
+ * Pointer to a FILETIME struct to receive the parsed timestamp.
+ *
  * @returns
- * Pointer to a FILETIME struct containing the parsed timestamp.
+ * true if the timestamp was successfully parsed; false otherwise.
  */
 static bool parse_timestamp_string(TCHAR *stamp, FILETIME *out) {
+    assert(stamp && out);
+
     TCHAR *zulu = _tcschr(stamp, 'Z');
 
     if (zulu != NULL) {
@@ -432,18 +397,18 @@ static bool parse_timestamp_string(TCHAR *stamp, FILETIME *out) {
 /*!
  * @brief
  * Retrieves timestamps from the specified file.
- * 
+ *
  * @param filename
  * Path to the file to retrieve timestamps from.
- * 
+ *
+ * @param out
+ * Pointer to a reference_timestamps struct to store the retrieved timestamps.
+ *
  * @return
- * Pointer to a reference_timestamps struct containing timestamps retrieved
- * from the specified file.
+ * true if the timestamps were successfully retrieved; false otherwise.
  */
 static bool get_ref_timestamps(const TCHAR *filename, reference_timestamps_t *out) {
-    if (!out) {
-        return false;
-    }
+    assert(filename && out);
 
     WIN32_FILE_ATTRIBUTE_DATA attr;
 
@@ -451,118 +416,201 @@ static bool get_ref_timestamps(const TCHAR *filename, reference_timestamps_t *ou
         return false;
     }
 
-    out->creation_time = attr.ftCreationTime;
-    out->last_access_time = attr.ftLastAccessTime;
-    out->last_write_time = attr.ftLastWriteTime;
-
-    int offset = config.time_offset;
-
-    if (offset != 0) {
-        if (HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_CREATION)) {
-            adjust_time_offset(&out->creation_time, offset);
-        }
-
-        if (HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS)) {
-            adjust_time_offset(&out->last_access_time, offset);
-        }
-
-        if (HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE)) {
-            adjust_time_offset(&out->last_write_time, offset);
-        }
-    }
+    out->creation = attr.ftCreationTime;
+    out->access = attr.ftLastAccessTime;
+    out->write = attr.ftLastWriteTime;
 
     return true;
 }
 
 /*!
  * @brief
- * Retrieves the current system date and time.
+ * Adjusts a file's timestamps.
+ *
+ * @param file_handle
+ * Handle to the file whose timestamps are to be adjusted.
+ *
+ * @param op
+ * Pointer to a timestamp_operation_t struct containing operation details.
  *
  * @return
- * Pointer to a FILETIME struct containing the current system date and time.
+ * true if the timestamps were successfully adjusted; false otherwise.
  */
-static bool get_current_file_time(FILETIME *out) {
-    if (!out) {
+static bool adjust_file_time(HANDLE file_handle, const timestamp_operation_t *op) {
+    assert(op);
+
+    FILETIME creation;
+    FILETIME access;
+    FILETIME write;
+
+    if (!GetFileTime(file_handle, &creation, &access, &write)) {
         return false;
     }
 
-    GetSystemTimeAsFileTime(out);
-    return true;
+    const FILETIME *ptr_creation = NULL;
+    const FILETIME *ptr_access = &ft_preserved;
+    const FILETIME *ptr_write = &ft_preserved;
+
+    if (op->ft_flags & FT_CREATION) {
+        adjust_time_offset(&creation, op->adjustment_seconds);
+        ptr_creation = &creation;
+    }
+
+    if (op->ft_flags & FT_ACCESS) {
+        adjust_time_offset(&access, op->adjustment_seconds);
+        ptr_access = &access;
+    }
+
+    if (op->ft_flags & FT_WRITE) {
+        adjust_time_offset(&write, op->adjustment_seconds);
+        ptr_write = &write;
+    }
+
+    return SetFileTime(file_handle, ptr_creation, ptr_access, ptr_write);
 }
 
 /*!
  * @brief
- * Sets the timestamps of the file based on the specified options
- * 
+ * Sets the timestamps of the file based on details provide by \p op.
+ *
+ * @param op
+ * Pointer to a timestamp_operation_t struct containing operation details.
+ *
  * @param file_handle
  * An open handle to the file to set its timestamp.
+ *
+ * @return
+ * true if the timestamps were successfully set; false otherwise.
  */
-static void set_file_time(HANDLE file_handle) {
-    bool change_creation = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_CREATION);
-    bool change_access = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_ACCESS);
-    bool change_write = HAS_FLAG(config.change_time_flags, FLAG_CHANGE_TIME_LAST_WRITE);
+static bool set_file_time(HANDLE file_handle, const timestamp_operation_t *op) {
+    assert(op);
 
-    if (!(change_creation || change_access || change_write)) {
-        return;
+    if (!(op->ft_flags & (FT_CREATION | FT_ACCESS | FT_WRITE))) {
+        return true;
     }
 
-    if (config.has_ref_stamps) {
-        SetFileTime(
-            file_handle,
-            change_creation ? &config.ref_stamps.creation_time : NULL,
-            change_access ? &config.ref_stamps.last_access_time : &ft_preserved,
-            change_write ? &config.ref_stamps.last_write_time : &ft_preserved
-        );
-    } else {
-        // Custom timestamp not specified but an adjustment option is
-        if (config.time_offset != 0 && !config.has_custom_stamp) {
-            adjust_file_time(file_handle, config.time_offset);
-            return;
-        }
-
-        SetFileTime(
-            file_handle,
-            change_creation ? &config.custom_stamp : NULL,
-            change_access ? &config.custom_stamp : &ft_preserved,
-            change_write ? &config.custom_stamp : &ft_preserved
-        );
+    // If there's an adjustment but no explicit timestamp via a reference file
+    // or timestamp input, adjust the current file time only
+    if (op->mode == TM_RELATIVE && op->adjustment_seconds != 0) {
+        return adjust_file_time(file_handle, op);
     }
+
+    return SetFileTime(
+        file_handle,
+        (op->ft_flags & FT_CREATION) ? &op->creation : NULL,
+        (op->ft_flags & FT_ACCESS) ? &op->access : &ft_preserved,
+        (op->ft_flags & FT_WRITE) ? &op->write : &ft_preserved);
 }
 
 /*!
  * @brief
- * Checks if the file at the given path exists.
+ * Constructs a timestamp_operation_t struct based on the given parameters.
  *
- * @param file_path
- * Path to the file to check.
+ * @param ft_stamp
+ * Optional pointer to a FILETIME struct containing the timestamp to work with.
+ * If specified, then \p ref_stamps should be NULL.
+ *
+ * @param ref_stamps
+ * Optional pointer to reference_timestamps_t struct containing the timestamps
+ * to work with. If specified, then \p ft_stamp should be NULL.
+ *
+ * @param ft_flags
+ * Flags indicating which file timestamps are affected.
+ * 
+ * @param adjustment_seconds
+ * Seconds to add to or subtract (if negative) from the target timestamp.
  *
  * @return
- * true if the file exists; false otherwise.
+ * A timestamp_operation_t describing the requested operation.
+ * 
+ * If both \p ft_stamp and \p ref_stamps are NULL, and \p adjustment_seconds is
+ * zero, the current time of day will be used as the base timestamp. However, if
+ * \p adjustment_seconds is non-zero, the \c mode member of the returned struct
+ * will be set to \c TM_RELATIVE, indicating that time adjustment is applied
+ * relative to an existing file's timestamps.
  */
-static bool file_exists(LPCTSTR path) {
-    DWORD attrs = GetFileAttributes(path);
+static timestamp_operation_t prepare_timestamp(
+    const FILETIME *ft_stamp,
+    const reference_timestamps_t *ref_stamps,
+    file_time_flags_t ft_flags, int adjustment_seconds) {
 
-    return (attrs != INVALID_FILE_ATTRIBUTES &&
-           !(attrs & FILE_ATTRIBUTE_DIRECTORY));
+    timestamp_operation_t op = { 0 };
+
+    op.ft_flags = ft_flags;
+    op.adjustment_seconds = adjustment_seconds;
+
+    if (!(ft_stamp || ref_stamps) && adjustment_seconds != 0) {
+        op.mode = TM_RELATIVE;
+        // Nothing to do here since relative adjustment is handled in
+        // set_file_time()
+        return op;
+    }
+
+    if (ref_stamps) {
+        op.mode = TM_EXPLICIT;
+
+        op.creation = ref_stamps->creation;
+        op.access = ref_stamps->access;
+        op.write = ref_stamps->write;
+    } else if (ft_stamp) {
+        op.mode = TM_EXPLICIT;
+        op.creation = op.access = op.write = *ft_stamp;
+    } else {
+        FILETIME now;
+        GetSystemTimeAsFileTime(&now);
+
+        op.mode = TM_NOW;
+        op.creation = op.access = op.write = now;
+    }
+
+    if (op.adjustment_seconds != 0) {
+        if (op.ft_flags & FT_CREATION) {
+            adjust_time_offset(&op.creation, op.adjustment_seconds);
+        }
+
+        if (op.ft_flags & FT_ACCESS) {
+            adjust_time_offset(&op.access, op.adjustment_seconds);
+        }
+
+        if (op.ft_flags & FT_WRITE) {
+            adjust_time_offset(&op.write, op.adjustment_seconds);
+        }
+    }
+
+    return op;
 }
 
 /*!
  * @brief
  * Changes the timestamp of the given file.
- * 
- * @param filename
+ *
+ * @param path
  * Path to the file to touch.
+ *
+ * @param create_new
+ * Specifies whether to create a new file if it does not exist.
+ * 
+ * @param follow_symlinks
+ * Specifies whether to follow symbolic links.
+ *
+ * @return
+ * true if the timestamps were successfully changed; false otherwise.
  */
-static bool touch(const TCHAR *filename, bool follow_symlinks) {
-    const bool create_new = !config.no_create;
-    int cw_flags = FILE_ATTRIBUTE_NORMAL;
+static bool touch(
+    const TCHAR *path,
+    bool create_new, bool follow_symlinks,
+    const timestamp_operation_t *op) {
+
+    assert(path && op);
+
+    DWORD cw_flags = FILE_ATTRIBUTE_NORMAL;
 
     if (!follow_symlinks) {
         cw_flags |= FILE_FLAG_OPEN_REPARSE_POINT;
     }
-    
+
     HANDLE file_handle = CreateFile(
-        filename,                                 // lpFileName
+        path,                                     // lpFileName
         GENERIC_READ | FILE_WRITE_ATTRIBUTES,     // dwDesiredAccess
         FILE_SHARE_READ,                          // dwShareMode
         NULL,                                     // lpSecurityAttributes
@@ -572,52 +620,83 @@ static bool touch(const TCHAR *filename, bool follow_symlinks) {
     );
 
     if (file_handle == INVALID_HANDLE_VALUE) {
-        const DWORD err = GetLastError();
+        DWORD err = GetLastError();
 
-        const bool missing_file =
+        bool missing_file =
             (err == ERROR_FILE_NOT_FOUND ||
              err == ERROR_PATH_NOT_FOUND);
 
         return (!create_new && missing_file);
     }
 
-    set_file_time(file_handle);
-
+    bool ok = set_file_time(file_handle, op);
     CloseHandle(file_handle);
-    return true;
+
+    return ok;
+}
+
+/*!
+ * @brief
+ * Prints an error message to stderr and exits the program with a failure status.
+ * 
+ * @param print_help_hint
+ * Specifies whether to print a help hint.
+ * 
+ * @param fmt
+ * Format string for the error message.
+ * 
+ * @param ...
+ * Arguments for the format string.
+ */
+static noreturn void die(bool print_help_hint, const TCHAR *fmt, ...) {
+    va_list args;
+
+    va_start(args, fmt);
+
+    console_vfprintf_color(console,
+        CONSOLE_COLOR_NONE, CONSOLE_COLOR_RED,
+        stderr, fmt, args);
+
+    va_end(args);
+
+    if (print_help_hint) {
+        _tprintf(_T("Try '%s -h' to show help information.\n"), prog_name);
+    }
+
+    if (console) {
+        free(console);
+    }
+
+    exit(EXIT_FAILURE);
 }
 
 int _tmain(int argc, TCHAR **argv) {
-    console_t *console = console_open();
-
-    bool status_ok = true;
-    bool print_get_help = true;
-
-    TCHAR *prog_name = get_name(argv[0], true);
+    console = console_open();
+    prog_name = get_name(argv[0]);
 
     // Store option arguments to process later before touching
-    TCHAR *hhmmss_adjustment = NULL;
+    TCHAR *offset_input = NULL;
     TCHAR *stamp_input = NULL;
     TCHAR *stamp_ref_file_input = NULL;
 
-    if (argc < 2) {
-        console_printf_error(console, _T("%s: No argument is supplied.\n"), prog_name);
+    file_time_flags_t ft_flags = 0;
+    int adjustment_seconds = 0;
 
-        status_ok = false;
-        goto clean_exit;
+    if (argc < 2) {
+        die(true, _T("%s: No argument is supplied.\n"), prog_name);
     }
 
     int option;
     while ((option = get_opt(argc, argv, _T("A:aCcdhmr:t:v"))) != -1) {
         switch (option) {
             case 'A':
-                hhmmss_adjustment = opt_arg;
+                offset_input = opt_arg;
                 break;
             case 'a':
-                config.change_time_flags |= FLAG_CHANGE_TIME_LAST_ACCESS;
+                ft_flags |= FT_ACCESS;
                 break;
             case 'C':
-                config.change_time_flags |= FLAG_CHANGE_TIME_CREATION;
+                ft_flags |= FT_CREATION;
                 break;
             case 'c':
                 config.no_create = true;
@@ -627,9 +706,9 @@ int _tmain(int argc, TCHAR **argv) {
                 break;
             case 'h':
                 print_usage_info();
-                goto clean_exit;
+                exit(EXIT_SUCCESS);
             case 'm':
-                config.change_time_flags |= FLAG_CHANGE_TIME_LAST_WRITE;
+                ft_flags |= FT_WRITE;
                 break;
             case 'r':
                 stamp_ref_file_input = opt_arg;
@@ -639,99 +718,79 @@ int _tmain(int argc, TCHAR **argv) {
                 break;
             case 'v':
                 print_version_info();
-                goto clean_exit;
+                exit(EXIT_SUCCESS);
             default:
                 if (opt_error == ERROR_ILLEGAL_OPT) {
-                    console_printf_error(console, _T("%s: Option -%c is illegal.\n"), prog_name, opt);
+                    die(true, _T("%s: Option -%c is illegal.\n"), prog_name, opt);
                 } else if (opt_error == ERROR_OPT_REQ_ARG) {
-                    console_printf_error(console, _T("%s: Option -%c requires an argument.\n"), prog_name, opt);
+                    die(true, _T("%s: Option -%c requires an argument.\n"), prog_name, opt);
                 } else {
-                    console_printf_error(console, _T("%s: Option is missing or the format is invalid.\n"), prog_name);
+                    die(true, _T("%s: Option is missing or the format is invalid.\n"), prog_name);
                 }
-
-                status_ok = false;
-                goto clean_exit;
         }
     }
 
     // Activate both flags if none are specified in options
-    if (config.change_time_flags == 0) {
-        config.change_time_flags = (FLAG_CHANGE_TIME_LAST_ACCESS | FLAG_CHANGE_TIME_LAST_WRITE);
+    if (!(ft_flags & (FT_CREATION | FT_ACCESS | FT_WRITE))) {
+        ft_flags |= (FT_ACCESS | FT_WRITE);
     }
 
     // Didn't receive any files to touch
     if (opt_index == argc) {
-        console_printf_error(console, _T("%s: Missing file operand.\n"), prog_name);
-
-        status_ok = false;
-        goto clean_exit;
+        die(true, _T("%s: Missing file operand.\n"), prog_name);
     }
 
     // Process time adjustment offset
-    if (hhmmss_adjustment) {
-        config.time_offset = parse_hhmmss(hhmmss_adjustment);
-        if (config.time_offset == INT_MIN) {
-            console_printf_error(console, _T("%s: Adjustment offset is invalid.\n"), prog_name);
+    if (offset_input) {
+        int offset = parse_hhmmss(offset_input);
 
-            status_ok = false;
-            goto clean_exit;
+        if (offset == INT_MIN) {
+            die(true, _T("%s: Adjustment offset is invalid.\n"), prog_name);
         }
+
+        adjustment_seconds = offset;
     }
 
     // Disallow timestamp inputs for multiple sources as it makes no sense
     if (stamp_input && stamp_ref_file_input) {
-        console_printf_error(console, _T("%s: Cannot set timestamp from multiple sources.\n"), prog_name);
-
-        status_ok = false;
-        goto clean_exit;
+        die(false, _T("%s: Cannot set timestamp from multiple sources.\n"), prog_name);
     }
 
-    // Process user-provided timestamp
+    FILETIME ft_stamp, *ft_stamp_ptr = NULL;
+    reference_timestamps_t ref_stamps, *ref_stamps_ptr = NULL;
+
     if (stamp_input) {
-        if (!parse_timestamp_string(stamp_input, &config.custom_stamp)) {
-            console_printf_error(console, _T("%s: Timestamp does not respect format.\n"), prog_name);
-
-            status_ok = false;
-            goto clean_exit;
+        if (!parse_timestamp_string(stamp_input, &ft_stamp)) {
+            die(true, _T("%s: Timestamp does not respect format.\n"), prog_name);
         }
 
-        config.has_custom_stamp = true;
-    } else {
-        // No need for current time if we're using a ref or only adjusting
-        // a file's timestamps
-        if (!(stamp_ref_file_input || hhmmss_adjustment)) {
-            get_current_file_time(&config.custom_stamp);
-            config.has_custom_stamp = true;
-        }
+        ft_stamp_ptr = &ft_stamp;
     }
 
-    // Process file-referenced timestamp
     if (stamp_ref_file_input) {
-        if (!file_exists(stamp_ref_file_input)) {
-            console_printf_error(console, _T("%s: Reference file does not exist.\n"), prog_name);
+        if (!get_ref_timestamps(stamp_ref_file_input, &ref_stamps)) {
+            DWORD err = GetLastError();
 
-            status_ok = false;
-            print_get_help = false;
-
-            goto clean_exit;
+            if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND) {
+                die(false, _T("%s: Reference file does not exist.\n"), prog_name);
+            } else {
+                die(false, _T("%s: Reference timestamp could not be retrieved.\n"), prog_name);
+            }
         }
 
-        if (!get_ref_timestamps(stamp_ref_file_input, &config.ref_stamps)) {
-            console_printf_error(console, _T("%s: Reference timestamp could not be set.\n"), prog_name);
-
-            status_ok = false;
-            print_get_help = false;
-
-            goto clean_exit;
-        }
-
-        config.has_ref_stamps = true;
+        ref_stamps_ptr = &ref_stamps;
     }
+
+    timestamp_operation_t op = prepare_timestamp(
+        ft_stamp_ptr, ref_stamps_ptr,
+        ft_flags, adjustment_seconds);
+
+    bool all_ok = true;
 
     for (; opt_index < argc; opt_index++) {
-        bool ok = touch(argv[opt_index], !config.no_dereference);
+        bool ok = touch(argv[opt_index], !config.no_create, !config.no_dereference, &op);
 
-        status_ok &= ok;
+        all_ok &= ok;
 
         if (!ok) {
             TCHAR *err_msg = get_win32_last_error_msg();
@@ -740,15 +799,9 @@ int _tmain(int argc, TCHAR **argv) {
         };
     }
 
-    print_get_help = false;
-
-clean_exit:
-
-    if (!status_ok && print_get_help) {
-        _tprintf(_T("Try '%s -h' to show help information.\n"), prog_name);
+    if (console) {
+        free(console);
     }
 
-    free(console);
-
-    return status_ok ? EXIT_SUCCESS : EXIT_FAILURE;
+    return all_ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

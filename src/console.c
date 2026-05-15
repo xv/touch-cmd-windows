@@ -77,8 +77,9 @@ void console_reset_colors(console_t *console) {
     SetConsoleTextAttribute(console->handle, console->attributes);
 }
 
-static int console_vfprintf_color(console_t *console, console_color_t bg, console_color_t fg,
-                                  FILE *stream, _Printf_format_string_ const TCHAR *fmt, va_list args) {
+int console_vfprintf_color(
+    console_t *console, console_color_t bg, console_color_t fg,
+    FILE *stream, _Printf_format_string_ const TCHAR *fmt, va_list args) {
 
     if (!console || !console->is_tty) {
         return _vftprintf(stream, fmt, args);
@@ -126,8 +127,10 @@ static int console_vfprintf_color(console_t *console, console_color_t bg, consol
     return ret;
 }
 
-int console_fprintf_color(console_t *console, console_color_t bg, console_color_t fg,
-                          FILE *stream, _Printf_format_string_ const TCHAR *fmt, ...) {
+int console_fprintf_color(
+    console_t *console, console_color_t bg, console_color_t fg,
+    FILE *stream, _Printf_format_string_ const TCHAR *fmt, ...) {
+
     va_list args;
     va_start(args, fmt);
 
@@ -138,7 +141,9 @@ int console_fprintf_color(console_t *console, console_color_t bg, console_color_
     return ret;
 }
 
-int console_printf_error(console_t *console, _Printf_format_string_ const TCHAR *fmt, ...) {
+int console_printf_error(
+    console_t *console, _Printf_format_string_ const TCHAR *fmt, ...) {
+
     va_list args;
     va_start(args, fmt);
 

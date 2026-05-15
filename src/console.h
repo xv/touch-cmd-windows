@@ -89,6 +89,10 @@ void console_set_colors(console_t *console, console_color_t bg, console_color_t 
  */
 void console_reset_colors(console_t *console);
 
+int console_vfprintf_color(
+    console_t *console, console_color_t bg, console_color_t fg,
+    FILE *stream, _Printf_format_string_ const TCHAR *fmt, va_list args);
+
 /*!
  * @brief
  * Prints formatted text with the specified background and foreground colors.
@@ -111,8 +115,9 @@ void console_reset_colors(console_t *console);
  * @return
  * Number of characters printed.
  */
-int console_fprintf_color(console_t *console, console_color_t bg, console_color_t fg,
-                          FILE *stream, _Printf_format_string_ const TCHAR *fmt, ...);
+int console_fprintf_color(
+    console_t *console, console_color_t bg, console_color_t fg,
+    FILE *stream, _Printf_format_string_ const TCHAR *fmt, ...);
 
 /*!
  * @brief
@@ -127,6 +132,7 @@ int console_fprintf_color(console_t *console, console_color_t bg, console_color_
  * @return
  * Number of characters printed.
  */
-int console_printf_error(console_t *console, _Printf_format_string_ const TCHAR *fmt, ...);
+int console_printf_error(
+    console_t *console, _Printf_format_string_ const TCHAR *fmt, ...);
 
 #endif // CONSOLE_H
