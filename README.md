@@ -64,7 +64,7 @@ Set-ExecutionPolicy -Scope CurrentUser Restricted
 
 Build From Source
 -----------------
-This utility is written in C, using Visual Studio 2022 with MSVC v143 and Windows 10 SDK v2004 ([10.0.19041.0](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/#windows-10)). The solution and project files are present in the `visualstudio\` directory. Simply run the IDE and build. Alternatively, there is also a `.\build` PowerShell script to compile the code if you only have a standalone Build Tools installation or don't feel like firing up the IDE.
+This utility is written in C, using Visual Studio 2026 with MSVC v145 and Windows 11 SDK 26100 ([10.0.26100.0](https://learn.microsoft.com/en-us/windows/apps/windows-sdk/downloads#windows-11--26100-versions)). The solution and project files are present in the `visualstudio\` directory. Simply run the IDE and build. Alternatively, there is also a `.\build` PowerShell script to compile the code if you only have a standalone Build Tools installation or don't feel like firing up the IDE.
 
 Usage Examples
 --------------
