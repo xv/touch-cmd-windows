@@ -1,4 +1,4 @@
-/* console.c
+﻿/* console.c
  * Copyright (C) 2025 Jad Altahan (https://github.com/xv)
  *
  * This software may be modified and distributed under the terms
@@ -10,8 +10,8 @@
 #define FG_MASK (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY)
 #define BG_MASK (BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY)
 
-console_t *console_open(void) {
-    console_t *console = calloc(1, sizeof(console_t));
+Console *console_open(void) {
+    Console *console = calloc(1, sizeof(Console));
     if (!console) {
         return NULL;
     }
@@ -34,7 +34,7 @@ console_t *console_open(void) {
     return console;
 }
 
-void console_close(console_t *console) {
+void console_close(Console *console) {
     if (!console) {
         return;
     }
@@ -46,7 +46,7 @@ void console_close(console_t *console) {
     free(console);
 }
 
-void console_set_colors(console_t *console, console_color_t bg, console_color_t fg) {
+void console_set_colors(Console *console, ConsoleColor bg, ConsoleColor fg) {
     if (!console || !console->is_tty) {
         return;
     }
@@ -69,7 +69,7 @@ void console_set_colors(console_t *console, console_color_t bg, console_color_t 
     SetConsoleTextAttribute(console->handle, attrs);
 }
 
-void console_reset_colors(console_t *console) {
+void console_reset_colors(Console *console) {
     if (!console || !console->is_tty) {
         return;
     }
@@ -78,7 +78,7 @@ void console_reset_colors(console_t *console) {
 }
 
 int console_vfprintf_color(
-    console_t *console, console_color_t bg, console_color_t fg,
+    Console *console, ConsoleColor bg, ConsoleColor fg,
     FILE *stream, _Printf_format_string_ const TCHAR *fmt, va_list args) {
 
     if (!console || !console->is_tty) {
@@ -128,7 +128,7 @@ int console_vfprintf_color(
 }
 
 int console_fprintf_color(
-    console_t *console, console_color_t bg, console_color_t fg,
+    Console *console, ConsoleColor bg, ConsoleColor fg,
     FILE *stream, _Printf_format_string_ const TCHAR *fmt, ...) {
 
     va_list args;
@@ -142,7 +142,7 @@ int console_fprintf_color(
 }
 
 int console_printf_error(
-    console_t *console, _Printf_format_string_ const TCHAR *fmt, ...) {
+    Console *console, _Printf_format_string_ const TCHAR *fmt, ...) {
 
     va_list args;
     va_start(args, fmt);

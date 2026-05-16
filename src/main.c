@@ -71,49 +71,49 @@ https://github.com/xv/touch-cmd-windows"
 
 typedef unsigned short ushort;
 
-typedef enum timestamp_format {
-    TF_LOCAL,
-    TF_UTC
-} timestamp_format_t;
+typedef enum timestamp_zone {
+    TS_ZONE_LOCAL,
+    TS_ZONE_UTC
+} TimestampZone;
 
-typedef enum timestamp_mode {
-    TM_NOW,
-    TM_EXPLICIT,
-    TM_RELATIVE
-} timestamp_mode_t;
+typedef enum timestamp_source {
+    TS_SOURCE_NOW,
+    TS_SOURCE_EXPLICIT,
+    TS_SOURCE_RELATIVE
+} TimestampSource;
 
 typedef enum file_time_flags
 {
     FT_CREATION = 1 << 0,
     FT_ACCESS = 1 << 1,
     FT_WRITE = 1 << 2
-} file_time_flags_t;
+} FileTimeFlags;
 
 typedef struct reference_timestamps {
     FILETIME creation;
     FILETIME access;
     FILETIME write;
-} reference_timestamps_t;
+} ReferenceTimestamps;
 
 typedef struct timestamp_operation {
-    timestamp_mode_t mode;
-    file_time_flags_t ft_flags;
+    TimestampSource source;
+    FileTimeFlags ft_flags;
     FILETIME creation;
     FILETIME access;
     FILETIME write;
     int adjustment_seconds;
-} timestamp_operation_t;
+} TimestampOperation;
 
 typedef struct program_config {
     bool no_create;
     bool no_dereference;
-    timestamp_format_t stamp_format;
-} program_config_t;
+    TimestampZone stamp_tz;
+} ProgramConfig;
 
-static program_config_t config = {
+static ProgramConfig config = {
     .no_create = false,
     .no_dereference = false,
-    .stamp_format = TF_LOCAL
+    .stamp_tz = TS_ZONE_LOCAL
 };
 
 // Specifies that a file's previous last access or write times should be preserved
@@ -126,7 +126,7 @@ const FILETIME ft_preserved = {
 };
 
 static const TCHAR *prog_name;
-static console_t *console;
+static Console *console;
 
 /*!
  * @brief
@@ -295,7 +295,7 @@ static bool string_to_filetime(const TCHAR *stamp, FILETIME *out) {
     st.wMinute = clamp_ushort(st.wMinute, 0, 59);
     st.wSecond = clamp_ushort(st.wSecond, 0, 59);
 
-    if (config.stamp_format == TF_LOCAL) {
+    if (config.stamp_tz == TS_ZONE_LOCAL) {
         local_time_to_file_time(&st, out);
     } else {
         // UTC timestamp
@@ -383,7 +383,7 @@ static bool parse_timestamp_string(TCHAR *stamp, FILETIME *out) {
             return false;
         }
 
-        config.stamp_format = TF_UTC;
+        config.stamp_tz = TS_ZONE_UTC;
         stamp[_tcslen(stamp) - spec_len] = '\0';
     }
 
@@ -407,7 +407,7 @@ static bool parse_timestamp_string(TCHAR *stamp, FILETIME *out) {
  * @return
  * true if the timestamps were successfully retrieved; false otherwise.
  */
-static bool get_ref_timestamps(const TCHAR *filename, reference_timestamps_t *out) {
+static bool get_ref_timestamps(const TCHAR *filename, ReferenceTimestamps *out) {
     assert(filename && out);
 
     WIN32_FILE_ATTRIBUTE_DATA attr;
@@ -431,12 +431,12 @@ static bool get_ref_timestamps(const TCHAR *filename, reference_timestamps_t *ou
  * Handle to the file whose timestamps are to be adjusted.
  *
  * @param op
- * Pointer to a timestamp_operation_t struct containing operation details.
+ * Pointer to a TimestampOperation struct containing operation details.
  *
  * @return
  * true if the timestamps were successfully adjusted; false otherwise.
  */
-static bool adjust_file_time(HANDLE file_handle, const timestamp_operation_t *op) {
+static bool adjust_file_time(HANDLE file_handle, const TimestampOperation *op) {
     assert(op);
 
     FILETIME creation;
@@ -474,7 +474,7 @@ static bool adjust_file_time(HANDLE file_handle, const timestamp_operation_t *op
  * Sets the timestamps of the file based on details provide by \p op.
  *
  * @param op
- * Pointer to a timestamp_operation_t struct containing operation details.
+ * Pointer to a TimestampOperation struct containing operation details.
  *
  * @param file_handle
  * An open handle to the file to set its timestamp.
@@ -482,7 +482,7 @@ static bool adjust_file_time(HANDLE file_handle, const timestamp_operation_t *op
  * @return
  * true if the timestamps were successfully set; false otherwise.
  */
-static bool set_file_time(HANDLE file_handle, const timestamp_operation_t *op) {
+static bool set_file_time(HANDLE file_handle, const TimestampOperation *op) {
     assert(op);
 
     if (!(op->ft_flags & (FT_CREATION | FT_ACCESS | FT_WRITE))) {
@@ -491,7 +491,7 @@ static bool set_file_time(HANDLE file_handle, const timestamp_operation_t *op) {
 
     // If there's an adjustment but no explicit timestamp via a reference file
     // or timestamp input, adjust the current file time only
-    if (op->mode == TM_RELATIVE && op->adjustment_seconds != 0) {
+    if (op->source == TS_SOURCE_RELATIVE && op->adjustment_seconds != 0) {
         return adjust_file_time(file_handle, op);
     }
 
@@ -504,15 +504,15 @@ static bool set_file_time(HANDLE file_handle, const timestamp_operation_t *op) {
 
 /*!
  * @brief
- * Constructs a timestamp_operation_t struct based on the given parameters.
+ * Constructs a TimestampOperation struct based on the given parameters.
  *
  * @param ft_stamp
  * Optional pointer to a FILETIME struct containing the timestamp to work with.
  * If specified, then \p ref_stamps should be NULL.
  *
  * @param ref_stamps
- * Optional pointer to reference_timestamps_t struct containing the timestamps
- * to work with. If specified, then \p ft_stamp should be NULL.
+ * Optional pointer to ReferenceTimestamps struct containing the timestamps to
+ * work with. If specified, then \p ft_stamp should be NULL.
  *
  * @param ft_flags
  * Flags indicating which file timestamps are affected.
@@ -521,45 +521,45 @@ static bool set_file_time(HANDLE file_handle, const timestamp_operation_t *op) {
  * Seconds to add to or subtract (if negative) from the target timestamp.
  *
  * @return
- * A timestamp_operation_t describing the requested operation.
+ * A TimestampOperation describing the requested operation.
  * 
  * If both \p ft_stamp and \p ref_stamps are NULL, and \p adjustment_seconds is
  * zero, the current time of day will be used as the base timestamp. However, if
- * \p adjustment_seconds is non-zero, the \c mode member of the returned struct
- * will be set to \c TM_RELATIVE, indicating that time adjustment is applied
- * relative to an existing file's timestamps.
+ * \p adjustment_seconds is non-zero, the \c source member of the returned struct
+ * will be set to \c TS_SOURCE_RELATIVE, indicating that time adjustment is
+ * applied relative to an existing file's timestamps.
  */
-static timestamp_operation_t prepare_timestamp(
+static TimestampOperation prepare_timestamp(
     const FILETIME *ft_stamp,
-    const reference_timestamps_t *ref_stamps,
-    file_time_flags_t ft_flags, int adjustment_seconds) {
+    const ReferenceTimestamps *ref_stamps,
+    FileTimeFlags ft_flags, int adjustment_seconds) {
 
-    timestamp_operation_t op = { 0 };
+    TimestampOperation op = { 0 };
 
     op.ft_flags = ft_flags;
     op.adjustment_seconds = adjustment_seconds;
 
     if (!(ft_stamp || ref_stamps) && adjustment_seconds != 0) {
-        op.mode = TM_RELATIVE;
+        op.source = TS_SOURCE_RELATIVE;
         // Nothing to do here since relative adjustment is handled in
         // set_file_time()
         return op;
     }
 
     if (ref_stamps) {
-        op.mode = TM_EXPLICIT;
+        op.source = TS_SOURCE_EXPLICIT;
 
         op.creation = ref_stamps->creation;
         op.access = ref_stamps->access;
         op.write = ref_stamps->write;
     } else if (ft_stamp) {
-        op.mode = TM_EXPLICIT;
+        op.source = TS_SOURCE_EXPLICIT;
         op.creation = op.access = op.write = *ft_stamp;
     } else {
         FILETIME now;
         GetSystemTimeAsFileTime(&now);
 
-        op.mode = TM_NOW;
+        op.source = TS_SOURCE_NOW;
         op.creation = op.access = op.write = now;
     }
 
@@ -599,7 +599,7 @@ static timestamp_operation_t prepare_timestamp(
 static bool touch(
     const TCHAR *path,
     bool create_new, bool follow_symlinks,
-    const timestamp_operation_t *op) {
+    const TimestampOperation *op) {
 
     assert(path && op);
 
@@ -679,7 +679,7 @@ int _tmain(int argc, TCHAR **argv) {
     TCHAR *stamp_input = NULL;
     TCHAR *stamp_ref_file_input = NULL;
 
-    file_time_flags_t ft_flags = 0;
+    FileTimeFlags ft_flags = 0;
     int adjustment_seconds = 0;
 
     if (argc < 2) {
@@ -757,7 +757,7 @@ int _tmain(int argc, TCHAR **argv) {
     }
 
     FILETIME ft_stamp, *ft_stamp_ptr = NULL;
-    reference_timestamps_t ref_stamps, *ref_stamps_ptr = NULL;
+    ReferenceTimestamps ref_stamps, *ref_stamps_ptr = NULL;
 
     if (stamp_input) {
         if (!parse_timestamp_string(stamp_input, &ft_stamp)) {
@@ -781,7 +781,7 @@ int _tmain(int argc, TCHAR **argv) {
         ref_stamps_ptr = &ref_stamps;
     }
 
-    timestamp_operation_t op = prepare_timestamp(
+    TimestampOperation op = prepare_timestamp(
         ft_stamp_ptr, ref_stamps_ptr,
         ft_flags, adjustment_seconds);
 

@@ -1,4 +1,4 @@
-/* console.h
+﻿/* console.h
  * Copyright (C) 2025 Jad Altahan (https://github.com/xv)
  *
  * This software may be modified and distributed under the terms
@@ -23,7 +23,7 @@ typedef struct console {
     HANDLE handle;
     WORD attributes;
     bool is_tty;
-} console_t;
+} Console;
 
 /*!
  * @brief
@@ -48,16 +48,16 @@ typedef enum console_color {
     CONSOLE_COLOR_LIGHT_PURPLE = 0xd,
     CONSOLE_COLOR_LIGHT_YELLOW = 0xe,
     CONSOLE_COLOR_BRIGHT_WHITE = 0xf
-} console_color_t;
+} ConsoleColor;
 
 /*!
  * @brief
  * Opens the console and retrieves default attributes.
  *
  * @return
- * Pointer to a new console_t instance, or NULL on allocation failure.
+ * Pointer to a new Console instance, or NULL on allocation failure.
  */
-console_t *console_open(void);
+Console *console_open(void);
 
 /*!
  * @brief
@@ -66,7 +66,7 @@ console_t *console_open(void);
  * @param console
  * Console instance to close.
  */
-void console_close(console_t *console);
+void console_close(Console *console);
 
 /*!
  * @brief
@@ -78,7 +78,7 @@ void console_close(console_t *console);
  * @param fg
  * The desired foreground color to set.
  */
-void console_set_colors(console_t *console, console_color_t bg, console_color_t fg);
+void console_set_colors(Console *console, ConsoleColor bg, ConsoleColor fg);
 
 /*!
  * @brief
@@ -87,10 +87,10 @@ void console_set_colors(console_t *console, console_color_t bg, console_color_t 
  * @param console
  * Console instance.
  */
-void console_reset_colors(console_t *console);
+void console_reset_colors(Console *console);
 
 int console_vfprintf_color(
-    console_t *console, console_color_t bg, console_color_t fg,
+    Console *console, ConsoleColor bg, ConsoleColor fg,
     FILE *stream, _Printf_format_string_ const TCHAR *fmt, va_list args);
 
 /*!
@@ -116,7 +116,7 @@ int console_vfprintf_color(
  * Number of characters printed.
  */
 int console_fprintf_color(
-    console_t *console, console_color_t bg, console_color_t fg,
+    Console *console, ConsoleColor bg, ConsoleColor fg,
     FILE *stream, _Printf_format_string_ const TCHAR *fmt, ...);
 
 /*!
@@ -133,6 +133,6 @@ int console_fprintf_color(
  * Number of characters printed.
  */
 int console_printf_error(
-    console_t *console, _Printf_format_string_ const TCHAR *fmt, ...);
+    Console *console, _Printf_format_string_ const TCHAR *fmt, ...);
 
 #endif // CONSOLE_H
