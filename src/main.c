@@ -20,6 +20,7 @@
 #include "getopt.h"
 #include "console.h"
 #include "version.h"
+#include "timeparse.h"
 
 #ifdef _WIN64
 #define BUILD_PLAT "x64"
@@ -211,27 +212,6 @@ static inline ushort clamp_ushort(ushort n, ushort min, ushort max) {
 
 /*!
  * @brief
- * Converts a local time specified in a SYSTEMTIME struct to file time.
- *
- * @param system_time
- * Pointer to a SYSTEMTIME struct containing the time to convert.
- *
- * @param file_time
- * Pointer to a FILETIME struct to receive the converted time.
- *
- * @return
- * true if the function succeeds; false otherwise.
- */
-static bool local_time_to_file_time(const SYSTEMTIME *system_time, FILETIME *file_time) {
-    assert(system_time && file_time);
-
-    FILETIME ft_local;
-    SystemTimeToFileTime(system_time, &ft_local);
-    return LocalFileTimeToFileTime(&ft_local, file_time);
-}
-
-/*!
- * @brief
  * Adjusts the given file time by the given offset. If the offset is negative,
  * time is moved backward. Otherwise, forward.
  *
@@ -244,65 +224,24 @@ static bool local_time_to_file_time(const SYSTEMTIME *system_time, FILETIME *fil
 static void adjust_time_offset(FILETIME *ft, int offset) {
     assert(ft);
 
-    ULARGE_INTEGER uli = {
-        ft->dwLowDateTime,
-        ft->dwHighDateTime
-    };
+    ULARGE_INTEGER uli = { 0 };
+    uli.LowPart = ft->dwLowDateTime;
+    uli.HighPart = ft->dwHighDateTime;
 
-    uli.QuadPart += (offset * 10000000ULL);
+    LONGLONG ticks = (LONGLONG)uli.QuadPart;
+    LONGLONG delta = (LONGLONG)offset * 10000000LL;
+
+    if ((delta > 0 && ticks > (MAXLONGLONG - delta)) ||
+        (delta < 0 && ticks < -delta)) {
+        return;
+    }
+
+    ticks += delta;
+
+    uli.QuadPart = (ULONGLONG)ticks;
 
     ft->dwLowDateTime = uli.LowPart;
     ft->dwHighDateTime = uli.HighPart;
-}
-
-/*!
- * @brief
- * Translates a timestamp to a FILETIME struct.
- *
- * @param stamp
- * Timestamp string in the format yyyyMMddHHmm[ss].
- *
- * @param out
- * Pointer to a FILETIME struct to receive the translated timestamp.
- *
- * @returns
- * true if the timestamp was successfully translated; false otherwise.
- */
-static bool string_to_filetime(const TCHAR *stamp, FILETIME *out) {
-    assert(stamp && out);
-
-    SYSTEMTIME st = { 0 };
-
-    int num_fields_converted = _stscanf(
-        stamp,
-        _T("%4hu%2hu%2hu%2hu%2hu%2hu"),
-        &st.wYear,
-        &st.wMonth,
-        &st.wDay,
-        &st.wHour,
-        &st.wMinute,
-        &st.wSecond
-    );
-
-    if (num_fields_converted < 5) {
-        return false;
-    }
-
-    st.wYear = clamp_ushort(st.wYear, 1601, 30827);
-    st.wMonth = clamp_ushort(st.wMonth, 1, 12);
-    st.wDay = clamp_ushort(st.wDay, 1, 31);
-    st.wHour = clamp_ushort(st.wHour, 0, 23);
-    st.wMinute = clamp_ushort(st.wMinute, 0, 59);
-    st.wSecond = clamp_ushort(st.wSecond, 0, 59);
-
-    if (config.stamp_tz == TS_ZONE_LOCAL) {
-        local_time_to_file_time(&st, out);
-    } else {
-        // UTC timestamp
-        SystemTimeToFileTime(&st, out);
-    }
-
-    return true;
 }
 
 /*!
@@ -361,37 +300,96 @@ static int parse_hhmmss(TCHAR *hhmmss) {
 
 /*!
  * @brief
- * Parses a given timestamp to translate into a FILETIME struct.
+ * Converts a Timestamp struct to a FILETIME struct.
  *
- * @param stamp
- * The string to parse, in the format yyyyMMddHHmm[ss][Z].
+ * @param ts
+ * Pointer to a Timestamp struct to convert.
  *
  * @param out
- * Pointer to a FILETIME struct to receive the parsed timestamp.
+ * Pointer to a FILETIME struct that will receive the converted Timestamp.
  *
- * @returns
- * true if the timestamp was successfully parsed; false otherwise.
+ * @return
+ * true if the conversion was successful; false otherwise.
  */
-static bool parse_timestamp_string(TCHAR *stamp, FILETIME *out) {
-    assert(stamp && out);
+static bool timestamp_to_filetime(const Timestamp *ts, FILETIME *out) {
+    assert(ts && out);
 
-    TCHAR *zulu = _tcschr(stamp, 'Z');
+    if (ts->utc_offset.specified) {
+        FILETIME ft;
 
-    if (zulu != NULL) {
-        size_t spec_len = _tcslen(zulu);
-        if (spec_len > 1) {
+        if (!SystemTimeToFileTime(&ts->st, &ft)) {
             return false;
         }
 
-        config.stamp_tz = TS_ZONE_UTC;
-        stamp[_tcslen(stamp) - spec_len] = '\0';
+        ULARGE_INTEGER ticks = { 0 };
+
+        ticks.LowPart = ft.dwLowDateTime;
+        ticks.HighPart = ft.dwHighDateTime;
+
+        LONGLONG delta =
+            (LONGLONG)ts->utc_offset.minutes *
+            60LL *
+            10000000LL;
+
+        // Prevent underflow if UTC conversion moves time before the FILETIME
+        // epoch (Jan 1, 1601). E.g., 1601-01-01T00:00:00+01:00
+        //
+        // No need to worry about overflow here since the ISO 8601 timestamp
+        // parser doesn't allow more than four digits for the year field anyway.
+        // An overflow would require the resulting FILETIME to be greater than
+        // 0x7FFFFFFFFFFFFFFF, which is equivalent to 30828-09-14T02:48:05.4775807
+        // when converted to a timestamp
+        if ((delta > 0) && (ticks.QuadPart < (ULONGLONG)delta)) {
+            return false;
+        }
+
+        ticks.QuadPart -= delta;
+
+        // If the converted timestamp is equivalent to the FILETIME epoch, that
+        // is 1601-01-01T00:00:00.000Z, the resulting FILETIME value is {0, 0}.
+        // Per SetFileTime() documentation, passing a FILETIME whose members are
+        // {0, 0} indicates that the application intends to leave the
+        // corresponding timestamp unchanged!
+        //
+        // I'm going to treat that as "expected behavior" until someone complains :D
+        out->dwLowDateTime = ticks.LowPart;
+        out->dwHighDateTime = ticks.HighPart;
+
+        return true;
     }
 
-    if (!is_digits(stamp)) {
+    SYSTEMTIME utc;
+
+    // Interpret timestamp as the local civil time in the current Windows TZ
+    // configuration to properly handle TZ-related adjustments like DST transitions
+    if (!TzSpecificLocalTimeToSystemTime(NULL, &ts->st, &utc)) {
         return false;
     }
 
-    return string_to_filetime(stamp, out);
+    return SystemTimeToFileTime(&utc, out);
+}
+
+ /*!
+  * @brief
+  * Parses a given timestamp string and translates it into a FILETIME struct.
+  *
+  * @param stamp
+  * The string to parse, which must follow ISO 8601 basic or extended format.
+  *
+  * @param out
+  * Pointer to a FILETIME struct to receive the parsed timestamp.
+  *
+  * @returns
+  * true if the timestamp was successfully parsed and translated; false otherwise.
+  */
+static bool parse_timestamp_string(const TCHAR *stamp, FILETIME *out) {
+    Timestamp ts;
+
+    if (!parse_timestamp(stamp, &ts)) {
+        return false;
+    }
+
+    return timestamp_to_filetime(&ts, out);
 }
 
 /*!
@@ -761,7 +759,7 @@ int _tmain(int argc, TCHAR **argv) {
 
     if (stamp_input) {
         if (!parse_timestamp_string(stamp_input, &ft_stamp)) {
-            die(true, _T("%s: Timestamp does not respect format.\n"), prog_name);
+            die(true, _T("%s: Timestamp is invalid or not in the expected format.\n"), prog_name);
         }
 
         ft_stamp_ptr = &ft_stamp;
