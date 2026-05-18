@@ -22,10 +22,14 @@
 #include "version.h"
 #include "timeparse.h"
 
-#ifdef _WIN64
+#if defined(_M_ARM64)
+#define BUILD_PLAT "arm64"
+#elif defined(_WIN64) || defined(__x86_64__)
 #define BUILD_PLAT "x64"
-#else
+#elif (defined(_WIN32) && !defined(_WIN64))
 #define BUILD_PLAT "x86"
+#else
+#error "Unsupported architecture"
 #endif
 
 #define PROGRAM_USAGE_SUMMARY \
