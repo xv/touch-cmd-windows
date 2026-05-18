@@ -103,18 +103,6 @@ typedef struct timestamp_operation {
     int adjustment_seconds;
 } TimestampOperation;
 
-typedef struct program_config {
-    bool no_create;
-    bool no_dereference;
-    TimestampZone stamp_tz;
-} ProgramConfig;
-
-static ProgramConfig config = {
-    .no_create = false,
-    .no_dereference = false,
-    .stamp_tz = TS_ZONE_LOCAL
-};
-
 // Specifies that a file's previous last access or write times should be preserved
 // when operating with file handles
 // https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
@@ -482,18 +470,19 @@ static TimestampOperation prepare_timestamp(
  * @param path
  * Path to the file to touch.
  *
- * @param create_new
- * Specifies whether to create a new file if it does not exist.
+ * @param existing_only
+ * Specifies whether to operate on an existing file only, or create the file if
+ * it does not exist.
  * 
  * @param follow_symlinks
- * Specifies whether to follow symbolic links.
+ * Specifies whether to follow symbolic links, or operate on the links themselves.
  *
  * @return
  * true if the timestamps were successfully changed; false otherwise.
  */
 static bool touch(
     const TCHAR *path,
-    bool create_new, bool follow_symlinks,
+    bool existing_only, bool follow_symlinks,
     const TimestampOperation *op) {
 
     assert(path && op);
@@ -505,13 +494,13 @@ static bool touch(
     }
 
     HANDLE file_handle = CreateFile(
-        path,                                     // lpFileName
-        GENERIC_READ | FILE_WRITE_ATTRIBUTES,     // dwDesiredAccess
-        FILE_SHARE_READ,                          // dwShareMode
-        NULL,                                     // lpSecurityAttributes
-        create_new ? OPEN_ALWAYS : OPEN_EXISTING, // dwCreationDisposition
-        cw_flags,                                 // dwFlagsAndAttributes
-        NULL                                      // hTemplateFile
+        path,                                        // lpFileName
+        GENERIC_READ | FILE_WRITE_ATTRIBUTES,        // dwDesiredAccess
+        FILE_SHARE_READ,                             // dwShareMode
+        NULL,                                        // lpSecurityAttributes
+        existing_only ? OPEN_EXISTING : OPEN_ALWAYS, // dwCreationDisposition
+        cw_flags,                                    // dwFlagsAndAttributes
+        NULL                                         // hTemplateFile
     );
 
     if (file_handle == INVALID_HANDLE_VALUE) {
@@ -521,7 +510,7 @@ static bool touch(
             (err == ERROR_FILE_NOT_FOUND ||
              err == ERROR_PATH_NOT_FOUND);
 
-        return (!create_new && missing_file);
+        return (existing_only && missing_file);
     }
 
     bool ok = set_file_time(file_handle, op);
@@ -577,6 +566,9 @@ int _tmain(int argc, TCHAR **argv) {
     FileTimeFlags ft_flags = 0;
     int adjustment_seconds = 0;
 
+    int file_must_exist = false;
+    int follow_symlinks = true;
+
     if (argc < 2) {
         die(true, _T("%s: No argument is supplied.\n"), prog_name);
     }
@@ -594,10 +586,10 @@ int _tmain(int argc, TCHAR **argv) {
                 ft_flags |= FT_CREATION;
                 break;
             case 'c':
-                config.no_create = true;
+                file_must_exist = true;
                 break;
             case 'd':
-                config.no_dereference = true;
+                follow_symlinks = false;
                 break;
             case 'h':
                 print_usage_info();
@@ -683,7 +675,7 @@ int _tmain(int argc, TCHAR **argv) {
     bool all_ok = true;
 
     for (; opt_index < argc; opt_index++) {
-        bool ok = touch(argv[opt_index], !config.no_create, !config.no_dereference, &op);
+        bool ok = touch(argv[opt_index], file_must_exist, follow_symlinks, &op);
 
         all_ok &= ok;
 
