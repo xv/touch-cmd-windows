@@ -43,4 +43,19 @@ typedef struct timestamp{
   */
 bool parse_timestamp(const TCHAR *stamp, Timestamp *out);
 
+/*!
+ * @brief
+ * Parses a time string representing hours, minutes and seconds.
+ * 
+ * @param hhmmss
+ * String in the format [-][[HH]MM]SS.
+ * 
+ * @param out
+ * Pointer to a signed integer to receives the parsed value in number of seconds.
+ * 
+ * @return
+ * true if parsing succeeds; false otherwise.
+ */
+bool parse_hhmmss(const TCHAR *hhmmss, int *out);
+
 #endif // TIMEPARSE_H

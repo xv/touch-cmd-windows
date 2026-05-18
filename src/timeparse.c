@@ -490,3 +490,61 @@ bool parse_timestamp(const TCHAR *stamp, Timestamp *out) {
 
     return true;
 }
+
+bool parse_hhmmss(const TCHAR *hhmmss, int *out) {
+    if (!hhmmss || *hhmmss == '\0' || !out) {
+        return false;
+    }
+
+    ParseContext ctx = {
+        .ptr = hhmmss,
+        .len = _tcslen(hhmmss)
+    };
+
+    bool negative = consume_char(&ctx, '-');
+
+    if (ctx.len != 2 && // SS
+        ctx.len != 4 && // MMSS
+        ctx.len != 6) { // HHMMSS
+        return false;
+    }
+    
+    WORD hh, mm, ss;
+    hh = mm = ss = 0;
+
+    switch (ctx.len) {
+        case 2:
+            if (!consume_u16(&ctx, 2, &ss)) {
+                return false;
+            }
+            break;
+        case 4:
+            if (!consume_u16(&ctx, 2, &mm) ||
+                !consume_u16(&ctx, 2, &ss)) {
+                return false;
+            }
+            break;
+        case 6:
+            if (!consume_u16(&ctx, 2, &hh) ||
+                !consume_u16(&ctx, 2, &mm) ||
+                !consume_u16(&ctx, 2, &ss)) {
+                return false;
+            }
+            break;
+        default:
+            return false;
+    }
+
+    if (mm > 59 || ss > 59) {
+        return false;
+    }
+
+    int total = (hh * 3600) + (mm * 60) + ss;
+
+    if (negative) {
+        total = -total;
+    }
+
+    *out = total;
+    return true;
+}

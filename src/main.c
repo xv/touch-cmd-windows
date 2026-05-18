@@ -70,8 +70,6 @@ Options:\n\
 This is an open-source utility whose code is found at:\n\
 https://github.com/xv/touch-cmd-windows"
 
-typedef unsigned short ushort;
-
 typedef enum timestamp_zone {
     TS_ZONE_LOCAL,
     TS_ZONE_UTC
@@ -147,32 +145,6 @@ static void print_version_info(void) {
 
 /*!
  * @brief
- * Checks if a string consists of digits (0-9) only.
- *
- * @param str
- * The string to check.
- *
- * @return
- * 1 if the given string is all digits; false otherwise.
- */
-static bool is_digits(const TCHAR *str) {
-    if (!str || *str == '\0') {
-        return false;
-    }
-
-    while (*str) {
-        if (*str < '0' || *str > '9') {
-            return false;
-        }
-
-        ++str;
-    }
-
-    return true;
-}
-
-/*!
- * @brief
  * Extracts the file name from a full path.
  *
  * @param path
@@ -187,27 +159,6 @@ static bool is_digits(const TCHAR *str) {
 static const TCHAR *get_name(const TCHAR *path) {
     const TCHAR *name = _tcsrchr(path, '\\');
     return name ? (name + 1) : path;
-}
-
-/*!
- * @brief
- * Clamps an unsigned short value between a minimum and a maximum.
- *
- * @param n
- * Original value.
- *
- * @param min
- * Minimum value.
- *
- * @param max
- * Maximum value.
- *
- * @returns
- * Clamped value if the original is outside of the min-max boundary.
- */
-static inline ushort clamp_ushort(ushort n, ushort min, ushort max) {
-    const ushort u = n < min ? min : n;
-    return u > max ? max : u;
 }
 
 /*!
@@ -242,60 +193,6 @@ static void adjust_time_offset(FILETIME *ft, int offset) {
 
     ft->dwLowDateTime = uli.LowPart;
     ft->dwHighDateTime = uli.HighPart;
-}
-
-/*!
- * @brief
- * Parses a string in the format [-]HH[mm][ss].
- *
- * @param hhmmss
- * The string to parse.
- *
- * @return
- * Number of seconds if successful, either positive or negative depending
- * on the operator parsed. Otherwise, INT_MIN is returned on failure.
- */
-static int parse_hhmmss(TCHAR *hhmmss) {
-    assert(hhmmss);
-
-    bool neg = false;
-
-    if (*hhmmss == '-') {
-        hhmmss++;
-        neg = true;
-    }
-
-    if (_tcslen(hhmmss) > 6) {
-        // Longer than HHmmss
-        return INT_MIN;
-    }
-
-    int hh, mm, ss;
-    hh = mm = ss = 0;
-
-    int num_fields_converted = _stscanf(
-        hhmmss,
-        _T("%2d%2d%2d"),
-        &hh,
-        &mm,
-        &ss
-    );
-
-    if (num_fields_converted < 1 || !is_digits(hhmmss)) {
-        // Invalid; the hour as a bare minimum wasn't parsed or the string
-        // has a non-digit
-        return INT_MIN;
-    }
-
-    mm = clamp_ushort(mm, 0, 59);
-    ss = clamp_ushort(ss, 0, 59);
-
-    int offset = hh * 3600 + mm * 60 + ss;
-    if (neg) {
-        offset *= -1;
-    }
-
-    return offset;
 }
 
 /*!
@@ -740,9 +637,9 @@ int _tmain(int argc, TCHAR **argv) {
 
     // Process time adjustment offset
     if (offset_input) {
-        int offset = parse_hhmmss(offset_input);
+        int offset;
 
-        if (offset == INT_MIN) {
+        if (!parse_hhmmss(offset_input, &offset)) {
             die(true, _T("%s: Adjustment offset is invalid.\n"), prog_name);
         }
 
