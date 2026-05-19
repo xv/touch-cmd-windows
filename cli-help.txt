@@ -1,0 +1,78 @@
+Syntax:
+    touch [options] FILE [...]
+
+Options:
+    -A OFFSET   Adjust the timestamps of a file by OFFSET, which must be in the
+                format "[-][[hh]mm]ss". The parts of the argument represent the
+                following:
+
+                    -    Make the adjustment negative, moving time backward.
+                    hh   Hours (00-99).
+                    mm   Minutes (00-59).
+                    ss   Seconds (00-59).
+
+                If FILE does not exist, it will be created with adjusted 
+                timestamps, unless the -c option is specified.
+
+    -a          Change only the last access timestamp. Neither the creation or
+                last modified timestamps will be changed unless -C or -m or both
+                are specified.
+
+    -C          Change only the creation timestamp. Neither the last access nor
+                last modified timestamps will be changed unless -a or -m or both
+                are specified.
+
+    -c          Do not create a new file if FILE does not exist. The program
+                will not display a diagnostic or error message and the the exit
+                value will not be affected.
+
+    -d          Do not dereference symbolic links. If FILE is a symbolic link,
+                its timestamp will be changed rather than that of the file it
+                refers to.
+
+    -m          Change only the last modified timestamp. Neither the creation or
+                last access timestamps will be changed unless -C or -a or both
+                are specified.
+
+    -r REFFILE  Use the timestamp of the file specified by the REFFILE argument
+                instead instead of the current time of day. This option cannot
+                be combined with -t.
+
+                If -A is specified, the adjustment will be applied to the
+                referenced timestamp.
+
+    -t STAMP    Use the timestamp specified by the STAMP argument, which must be
+                in one of the following ISO 8601 basic or extended formats:
+
+                    Calendar date format
+                        YYYYMMDD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
+                        YYYY-MM-DD[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]
+
+                    Ordinal date format
+                        YYYYDDD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
+                        YYYY-DDD[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]
+
+                    Week date format
+                        YYYYWwwD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
+                        YYYY-Www-D[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]
+
+                The parts of the argument represent the following:
+
+                    YYYY    Year (1601-9999).
+                    MM      Month (01 to 12).
+                    D       Day of week (1-7, 1=Monday, 7=Sunday).
+                    DD      Day (01-31).
+                    DDD     Day of year (001-366).
+                    ww      Week of year (01-53).
+                    hh      Hour of day (00-23).
+                    mm      Minute of hour (00-59).
+                    ss      Second of minute (00-59).
+                    SSS     Millisecond of second (000-999).
+                    Z       Indicates timestamp is in UTC.
+
+    -h          Display this help information and exit.
+
+    -v          Display version information and exit.
+
+This is an open-source utility whose code is found at:
+https://github.com/xv/touch-cmd-windows

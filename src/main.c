@@ -34,43 +34,62 @@
 
 #define PROGRAM_USAGE_SUMMARY \
 "Syntax:\n\
-    touch [options] file [...]\n\n\
+    touch [options] FILE [...]\n\n\
 Options:\n\
-    -A OFFSET    Adjust the timestamps of a file by an offset specified by the\n\
-                 OFFSET argument, which must be in the format [-]HH[mm][ss],\n\
-                 where HH is a 2-digit numerical representation of hours between\n\
-                 0 and 99; mm is a 2-digit numerical representation of minutes\n\
-                 between 0 and 59; and ss is a 2-digit numerical representation\n\
-                 of seconds between 0 and 59. A negative offset will move time\n\
-                 backward. If a file does not exist, it will be created with\n\
-                 adjusted timestamps, unless the -c option is specified.\n\n\
-    -a           Change only the last access timestamp. The last modified\n\
-                 timestamp will not be changed unless -m is specified.\n\n\
-    -C           Change only the creation timestamp. Neither the last access or\n\
-                 last modified timestamps will be changed unless -a or -m\n\
-                 (or both) are specified.\n\n\
-    -c           Do not create a new file if the file specified does not exist.\n\
-                 The program will not display a diagnostic or error message and\n\
-                 the exit value will not be affected.\n\n\
-    -d           Do not dereference symbolic links. If this option is specified,\n\
-                 the timestamp of the symbolic link itself will be changed\n\
-                 rather than the file it refers to.\n\n\
-    -m           Change only the last modified timestamp. The last access\n\
-                 timestamp will not be changed unless -a is specified.\n\n\
-    -r FILE      Use the timestamp of the file specified by the FILE argument\n\
-                 instead of the current time of day. This option cannot be\n\
-                 combined with -t.\n\n\
-    -t STAMP     Use the timestamp specified by the STAMP argument, which must\n\
-                 be in the format yyyyMMddHHmm[ss][Z], where yyyy is a 4-digit\n\
-                 numerical representation of the year; MM is a 2-digit numerical\n\
-                 representation of the month; dd is a 2-digit numerical\n\
-                 representation of the day; and ss is an optional 2-digit\n\
-                 numerical representation of the seconds. The timestamp is in\n\
-                 local time by default; however, you may optionally append Z\n\
-                 (case-sensitive) at the end to convert it to UTC time. This\n\
-                 option cannot be combined with -r.\n\n\
-    -h           Display this help information and exit.\n\n\
-    -v           Display version information and exit.\n\n\
+    -A OFFSET   Adjust the timestamps of a file by OFFSET, which must be in the\n\
+                format \"[-][[hh]mm]ss\". The parts of the argument represent the\n\
+                following:\n\n\
+                    -    Make the adjustment negative, moving time backward.\n\
+                    hh   Hours (00-99).\n\
+                    mm   Minutes (00-59).\n\
+                    ss   Seconds (00-59).\n\n\
+                If FILE does not exist, it will be created with adjusted \n\
+                timestamps, unless the -c option is specified.\n\n\
+    -a          Change only the last access timestamp. Neither the creation or\n\
+                last modified timestamps will be changed unless -C or -m or both\n\
+                are specified.\n\n\
+    -C          Change only the creation timestamp. Neither the last access nor\n\
+                last modified timestamps will be changed unless -a or -m or both\n\
+                are specified.\n\n\
+    -c          Do not create a new file if FILE does not exist. The program\n\
+                will not display a diagnostic or error message and the the exit\n\
+                value will not be affected.\n\n\
+    -d          Do not dereference symbolic links. If FILE is a symbolic link,\n\
+                its timestamp will be changed rather than that of the file it\n\
+                refers to.\n\n\
+    -m          Change only the last modified timestamp. Neither the creation or\n\
+                last access timestamps will be changed unless -C or -a or both\n\
+                are specified.\n\n\
+    -r REFFILE  Use the timestamp of the file specified by the REFFILE argument\n\
+                instead instead of the current time of day. This option cannot\n\
+                be combined with -t.\n\n\
+                If -A is specified, the adjustment will be applied to the\n\
+                referenced timestamp.\n\n\
+    -t STAMP    Use the timestamp specified by the STAMP argument, which must be\n\
+                in one of the following ISO 8601 basic or extended formats:\n\n\
+                    Calendar date format\n\
+                        YYYYMMDD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]\n\
+                        YYYY-MM-DD[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]\n\n\
+                    Ordinal date format\n\
+                        YYYYDDD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]\n\
+                        YYYY-DDD[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]\n\n\
+                    Week date format\n\
+                        YYYYWwwD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]\n\
+                        YYYY-Www-D[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]\n\n\
+                The parts of the argument represent the following:\n\n\
+                    YYYY    Year (1601-9999).\n\
+                    MM      Month (01 to 12).\n\
+                    D       Day of week (1-7, 1=Monday, 7=Sunday).\n\
+                    DD      Day (01-31).\n\
+                    DDD     Day of year (001-366).\n\
+                    ww      Week of year (01-53).\n\
+                    hh      Hour of day (00-23).\n\
+                    mm      Minute of hour (00-59).\n\
+                    ss      Second of minute (00-59).\n\
+                    SSS     Millisecond of second (000-999).\n\
+                    Z       Indicates timestamp is in UTC.\n\n\
+    -h          Display this help information and exit.\n\n\
+    -v          Display version information and exit.\n\n\
 This is an open-source utility whose code is found at:\n\
 https://github.com/xv/touch-cmd-windows"
 
@@ -559,6 +578,8 @@ static noreturn void die(bool print_help_hint, const TCHAR *fmt, ...) {
 }
 
 int _tmain(int argc, TCHAR **argv) {
+    SetConsoleOutputCP(1252);
+
     console = console_open();
     prog_name = get_name(argv[0]);
 
