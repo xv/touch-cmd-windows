@@ -37,12 +37,12 @@ typedef struct timestamp {
   * \par
   * Calendar date formats:
   * - Basic:    YYYYMMDD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
-  * - Extended: YYYY-MM-DD[Thh:mm[:ss[.SSS]][Z|±hh:mm]]
+  * - Extended: YYYY-MM-DD[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]
   * 
   * \par
   * Week date formats:
   * - Basic:    YYYYWwwD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
-  * - Extended: YYYY-Www-D[Thh:mm[:ss[.SSS]][Z|±hh:mm]]
+  * - Extended: YYYY-Www-D[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]
   * 
   * @param out
   * Pointer to a Timestamp struct that will receive the translated timestamp.

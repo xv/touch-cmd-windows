@@ -593,14 +593,17 @@ static bool parse_utc_offset(ParseContext *ctx, UtcOffset *out) {
 
     bool extended = ctx->fmt_style == FORMAT_STYLE_EXTENDED;
 
-    // ISO 8601-1:2019§5.3.4.1 forbids hours-only offsets in extended format
-    // but allows them in basic format
-    if (extended && !consume_char(ctx, ':')) {
-        return false;
-    }
+    // ISO 8601-1:2019§5.3.4.1 allows the minutes component to be omitted in
+    // both basic and extended formats when the offset is an integral number
+    // of hours
+    if (ctx->len > 0) {
+        if (extended && !consume_char(ctx, ':')) {
+            return false;
+        }
 
-    if (ctx->len > 0 && !consume_u16(ctx, 2, &minutes)) {
-        return false;
+        if (!consume_u16(ctx, 2, &minutes)) {
+            return false;
+        }
     }
 
     if (hours > 23 || minutes > 59) {
