@@ -22,7 +22,7 @@ typedef struct utc_offset {
  * @brief
  * Represents a timestamp containing a SYSTEMTIME value and a UTC offset.
  */
-typedef struct timestamp{
+typedef struct timestamp {
     SYSTEMTIME st;
     UtcOffset utc_offset;
 } Timestamp;
@@ -32,9 +32,18 @@ typedef struct timestamp{
   * Translates a timestamp string to a Timestamp struct.
   *
   * @param stamp
-  * Timestamp string in ISO 8601 basic (yyyyMMdd[THH[mm[ss[.SSS]]][Z|±hh[mm]]])
-  * or extended format (yyyy-MM-dd[THH:mm[:ss[.SSS]][Z|±hh:mm]]).
-  *
+  * Timestamp string in ISO 8601 calendar date or week date format.
+  * 
+  * \par
+  * Calendar date formats:
+  * - Basic:    YYYYMMDD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
+  * - Extended: YYYY-MM-DD[Thh:mm[:ss[.SSS]][Z|±hh:mm]]
+  * 
+  * \par
+  * Week date formats:
+  * - Basic:    YYYYWwwD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
+  * - Extended: YYYY-Www-D[Thh:mm[:ss[.SSS]][Z|±hh:mm]]
+  * 
   * @param out
   * Pointer to a Timestamp struct that will receive the translated timestamp.
   *
@@ -48,7 +57,7 @@ bool parse_timestamp(const TCHAR *stamp, Timestamp *out);
  * Parses a time string representing hours, minutes and seconds.
  * 
  * @param hhmmss
- * String in the format [-][[HH]MM]SS.
+ * String in the format [-][[hh]mm]ss.
  * 
  * @param out
  * Pointer to a signed integer to receives the parsed value in number of seconds.

@@ -14,7 +14,8 @@
 #define SYSTIME_YEAR_MIN 1601
 #define SYSTIME_YEAR_MAX 30827
 
-#define ISO8601_DATE_EXTEN_LEN 10 // yyyy-MM-dd
+#define ISO8601_DATE_EXTEN_LEN 10 // YYYY-MM-DD OR YYYY-Www-D
+#define ISO8601_DATE_BASIC_LEN 8  // YYYYMMDD OR YYYYWwwD
 
 /*!
  * @brief
@@ -78,6 +79,115 @@ static WORD days_in_month(WORD year, WORD month) {
     }
 
     return days[month - 1];
+}
+
+/*!
+ * @brief
+ * Determines the day of the week for a given date.
+ * 
+ * @param year
+ * The year of the date.
+ * 
+ * @param month
+ * The month of the date (1-12).
+ * 
+ * @param day
+ * The day of the date (1-31).
+ * 
+ * @return
+ * The day of the week, where Sunday=0, Monday=1, ..., Saturday=6.
+ */
+static WORD day_of_week(WORD year, WORD month, WORD day) {
+    // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Sakamoto's_methods
+    static const WORD t[] = {
+        0, 3, 2, 5, 0, 3,
+        5, 1, 4, 6, 2, 4
+    };
+
+    year -= (month < 3);
+
+    return (year + (year / 4) - (year / 100) + (year / 400) + t[month - 1] + day) % 7;
+}
+
+/*!
+ * @brief
+ * Determines the number of ISO weeks in the specified year.
+ * 
+ * @param year
+ * The year to evaluate.
+ * 
+ * @return
+ * 53 if the ISO week-based year contains 53 weeks; otherwise 52.
+ */
+static WORD iso_weeks_in_year(WORD year) {
+    WORD jan1_wday = day_of_week(year, 1, 1);
+
+    // 53-week years occur on all years that have Thursday as 1 January and on
+    // leap years that start on Wednesday
+    if (jan1_wday == 4 ||
+       (jan1_wday == 3 && is_leap_year(year))) {
+        return 53;
+    }
+
+    return 52;
+}
+
+/*!
+ * @brief
+ * Converts an ISO week date to a SYSTEMTIME struct representing the
+ * corresponding calendar date at 00:00:00.
+ * 
+ * @param year
+ * The year.
+ * 
+ * @param iso_week
+ * ISO week number (1–53).
+ * 
+ * @param iso_weekday
+ * ISO weekday where 1 is Monday and 7 is Sunday.
+ * 
+ * @param out
+ * Pointer to a SYSTEMTIME that receives the resulting calendar date.
+ * 
+ * @return
+ * true on success; false otherwise.
+ */
+static bool iso_week_date_to_systemtime(
+    WORD year, WORD iso_week, WORD iso_weekday,
+    SYSTEMTIME *out) {
+
+    SYSTEMTIME jan4 = {
+        .wYear = year,
+        .wMonth = 1,
+        .wDay = 4
+    };
+
+    FILETIME ft;
+
+    if (!SystemTimeToFileTime(&jan4, &ft)) {
+        return false;
+    }
+
+    ULARGE_INTEGER uli = { 0 };
+    uli.LowPart = ft.dwLowDateTime;
+    uli.HighPart = ft.dwHighDateTime;
+
+    WORD weekday = day_of_week(year, 1, 4);
+    weekday = (weekday == 0) ? 7 : weekday;
+
+    LONG day_offset = -(weekday - 1) + ((iso_week - 1) * 7) + (iso_weekday - 1);
+
+    LONGLONG ticks = (LONGLONG)uli.QuadPart;
+    LONGLONG day_ticks = 24LL * 60 * 60 * 10000000;
+
+    ticks += day_offset * day_ticks;
+
+    uli.QuadPart = (ULONGLONG)ticks;
+
+    ft.dwLowDateTime = uli.LowPart;
+    ft.dwHighDateTime = uli.HighPart;
+
+    return FileTimeToSystemTime(&ft, out);
 }
 
 /*!
@@ -258,19 +368,19 @@ static bool consume_u16(ParseContext *ctx, size_t digits, WORD *out) {
 
 /*!
  * @brief
- * Parses a date from the parse context and, if present and valid, writes the
- * year, month and day to \p st.
+ * Parses an ISO 8601-formatted calendar date from the parse context and writes
+ * the year, month and day to \p st.
  * 
  * @param ctx
  * Pointer to the current parse context.
  * 
  * @param st
- * Pointer to a SYSTEMTIME structure that will receive the parsed date.
+ * Pointer to a SYSTEMTIME structure that will receive the parsed calendar date.
  * 
  * @return
  * true if the date was successfully parsed and stored; false otherwise.
  */
-static bool parse_date(ParseContext *ctx, SYSTEMTIME *st) {
+static bool parse_calendar_date(ParseContext *ctx, SYSTEMTIME *st) {
     if (!consume_u16(ctx, 4, &st->wYear)) {
         return false;
     }
@@ -294,6 +404,86 @@ static bool parse_date(ParseContext *ctx, SYSTEMTIME *st) {
     }
 
     return true;
+}
+
+/*!
+ * @brief Parses an ISO 8601-formatted week date from the parse context and
+ * writes the year, month and day to \p st.
+ * 
+ * @param ctx
+ * Pointer to the current parse context.
+ *
+ * @param st
+ * Pointer to a SYSTEMTIME structure that will receive the parsed week date.
+ * 
+ * @return
+ * true if the date was successfully parsed and stored; false otherwise.
+ */
+static bool parse_week_date(ParseContext *ctx, SYSTEMTIME *st) {
+    WORD year, iso_week, iso_weekday;
+    bool extended = ctx->fmt_style == FORMAT_STYLE_EXTENDED;
+
+    if (!consume_u16(ctx, 4, &year)) {
+        return false;
+    }
+
+    if (extended && !consume_char(ctx, '-')) {
+        return false;
+    }
+
+    if (!consume_char(ctx, 'W')) {
+        return false;
+    }
+
+    if (!consume_u16(ctx, 2, &iso_week)) {
+        return false;
+    }
+
+    if (extended && !consume_char(ctx, '-')) {
+        return false;
+    }
+
+    if (!consume_u16(ctx, 1, &iso_weekday)) {
+        return false;
+    }
+
+    if (iso_week < 1 ||
+        iso_week > iso_weeks_in_year(year)) {
+        return false;
+    }
+
+    if (iso_weekday < 1 || iso_weekday > 7) {
+        return false;
+    }
+
+    return iso_week_date_to_systemtime(year, iso_week, iso_weekday, st);
+}
+
+/*!
+ * @brief Parses an ISO 8601-formatted calendar or week date from the parse
+ * context and writes the year, month and day to \p st.
+ *
+ * @param ctx
+ * Pointer to the current parse context.
+ *
+ * @param st
+ * Pointer to a SYSTEMTIME structure that will receive the parsed date.
+ *
+ * @return
+ * true if the date was successfully parsed and stored; false otherwise.
+ */
+static bool parse_date(ParseContext *ctx, SYSTEMTIME *st) {
+    if (ctx->len < ISO8601_DATE_BASIC_LEN) {
+        return false;
+    }
+
+    bool week_date =
+        (ctx->ptr[4] == 'W') ||
+        (ctx->ptr[4] == '-' && ctx->ptr[5] == 'W');
+
+    return week_date ?
+        parse_week_date(ctx, st) :
+        parse_calendar_date(ctx, st);
 }
 
 /*!
@@ -452,9 +642,8 @@ bool parse_timestamp(const TCHAR *stamp, Timestamp *out) {
     };
 
     bool extended =
-        ctx.len >= ISO8601_DATE_EXTEN_LEN &&
-        stamp[4] == '-' &&
-        stamp[7] == '-';
+        ctx.len > 5 && // Check for at least 'YYYY-M' or 'YYYY-W'
+        stamp[4] == '-';
 
     ctx.fmt_style = extended ? FORMAT_STYLE_EXTENDED : FORMAT_STYLE_BASIC;
 
@@ -503,9 +692,9 @@ bool parse_hhmmss(const TCHAR *hhmmss, int *out) {
 
     bool negative = consume_char(&ctx, '-');
 
-    if (ctx.len != 2 && // SS
-        ctx.len != 4 && // MMSS
-        ctx.len != 6) { // HHMMSS
+    if (ctx.len != 2 && // ss
+        ctx.len != 4 && // mmss
+        ctx.len != 6) { // hhmmss
         return false;
     }
     
