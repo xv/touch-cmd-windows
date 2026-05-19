@@ -40,6 +40,11 @@ typedef struct timestamp {
   * - Extended: YYYY-MM-DD[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]
   * 
   * \par
+  * Ordinal date formats:
+  * - Basic:    YYYYDDD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
+  * - Extended: YYYY-DDD[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]
+  * 
+  * \par
   * Week date formats:
   * - Basic:    YYYYWwwD[Thh[mm[ss[.SSS]]][Z|±hh[mm]]]
   * - Extended: YYYY-Www-D[Thh:mm[:ss[.SSS]][Z|±hh[:mm]]]

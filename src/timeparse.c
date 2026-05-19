@@ -14,9 +14,6 @@
 #define SYSTIME_YEAR_MIN 1601
 #define SYSTIME_YEAR_MAX 30827
 
-#define ISO8601_DATE_EXTEN_LEN 10 // YYYY-MM-DD OR YYYY-Www-D
-#define ISO8601_DATE_BASIC_LEN 8  // YYYYMMDD OR YYYYWwwD
-
 /*!
  * @brief
  * Specifies the format style for parsing timestamps.
@@ -42,6 +39,20 @@ typedef struct parse_context {
 
 /*!
  * @brief
+ * Checks if a character is a digit.
+ * 
+ * @param ch
+ * The character to check.
+ * 
+ * @return
+ * true if \p ch is a digit; false otherwise.
+ */
+static inline bool is_digit(TCHAR ch) {
+    return ch >= '0' && ch <= '9';
+}
+
+/*!
+ * @brief
  * Checks if the given year is a leap year.
  * 
  * @param year
@@ -57,16 +68,16 @@ static bool is_leap_year(WORD year) {
 
 /*!
  * @brief
- * Checks the number of days in a given month of a given year.
+ * Determines the number of days in the given year and month.
  * 
  * @param year
- * The year to check.
+ * The year.
  * 
  * @param month
- * The month to check.
+ * The month (1-12).
  * 
  * @return
- * The number of days.
+ * The number of days in the month, accounting for leap years if necessary.
  */
 static WORD days_in_month(WORD year, WORD month) {
     static const WORD days[] = {
@@ -130,6 +141,52 @@ static WORD iso_weeks_in_year(WORD year) {
     }
 
     return 52;
+}
+
+/*!
+ * @brief
+ * Converts an ISO ordinal date to a SYSTEMTIME struct representing the
+ * corresponding calendar date at 00:00:00.
+ * 
+ * @param year
+ * The year.
+ * 
+ * @param ordinal_day
+ * The ordinal day of the year (1–365 or 1–366 for leap years).
+ * 
+ * @param out
+ * Pointer to a SYSTEMTIME that receives the resulting calendar date.
+ * 
+ * @return
+ * true on success; false otherwise.
+ */
+static bool iso_ordinal_date_to_systemtime(
+    WORD year, WORD ordinal_day, SYSTEMTIME *out) {
+
+    WORD max_days = is_leap_year(year) ? 366 : 365;
+
+    if (ordinal_day < 1 || ordinal_day > max_days) {
+        return false;
+    }
+
+    WORD month = 1;
+
+    while (true) {
+        WORD dim = days_in_month(year, month);
+
+        if (ordinal_day <= dim) {
+            break;
+        }
+
+        ordinal_day -= dim;
+        month++;
+    }
+
+    out->wYear = year;
+    out->wMonth = month;
+    out->wDay = ordinal_day;
+
+    return true;
 }
 
 /*!
@@ -407,6 +464,39 @@ static bool parse_calendar_date(ParseContext *ctx, SYSTEMTIME *st) {
 }
 
 /*!
+ * @brief
+ * Parses an ISO 8601-formatted ordinal date from the parse context and writes
+ * the year, month and day to \p st.
+ * 
+ * @param ctx
+ * Pointer to the current parse context.
+ * 
+ * @param st
+ * Pointer to a SYSTEMTIME structure that will receive the parsed ordinal date.
+ * 
+ * @return
+ * true if the date was successfully parsed and stored; false otherwise.
+ */
+static bool parse_ordinal_date(ParseContext *ctx, SYSTEMTIME *st) {
+    WORD year, ordinal_day;
+    bool extended = ctx->fmt_style == FORMAT_STYLE_EXTENDED;
+
+    if (!consume_u16(ctx, 4, &year)) {
+        return false;
+    }
+
+    if (extended && !consume_char(ctx, '-')) {
+        return false;
+    }
+
+    if (!consume_u16(ctx, 3, &ordinal_day)) {
+        return false;
+    }
+
+    return iso_ordinal_date_to_systemtime(year, ordinal_day, st);
+}
+
+/*!
  * @brief Parses an ISO 8601-formatted week date from the parse context and
  * writes the year, month and day to \p st.
  * 
@@ -473,7 +563,13 @@ static bool parse_week_date(ParseContext *ctx, SYSTEMTIME *st) {
  * true if the date was successfully parsed and stored; false otherwise.
  */
 static bool parse_date(ParseContext *ctx, SYSTEMTIME *st) {
-    if (ctx->len < ISO8601_DATE_BASIC_LEN) {
+    bool extended = ctx->fmt_style == FORMAT_STYLE_EXTENDED;
+
+    const size_t min_len = extended ?
+        8 : // Ordinal YYYY-DDD
+        7;  // Ordinal YYYYDDD
+
+    if (ctx->len < min_len) {
         return false;
     }
 
@@ -481,9 +577,25 @@ static bool parse_date(ParseContext *ctx, SYSTEMTIME *st) {
         (ctx->ptr[4] == 'W') ||
         (ctx->ptr[4] == '-' && ctx->ptr[5] == 'W');
 
-    return week_date ?
-        parse_week_date(ctx, st) :
-        parse_calendar_date(ctx, st);
+    if (week_date) {
+        return parse_week_date(ctx, st);
+    }
+
+    bool calendar_date;
+
+    if (extended) {
+        calendar_date =
+            ctx->len >= 10 &&   // YYYY-MM-DD
+            ctx->ptr[7] == '-'; //        ^
+    } else {
+        calendar_date =
+            ctx->len >= 8 &&       // YYYYMMDD
+            is_digit(ctx->ptr[7]); //        ^
+    }
+
+    return calendar_date ?
+        parse_calendar_date(ctx, st) :
+        parse_ordinal_date(ctx, st);
 }
 
 /*!
