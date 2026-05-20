@@ -14,12 +14,12 @@ Options:
                 If FILE does not exist, it will be created with adjusted 
                 timestamps, unless the -c option is specified.
 
-    -a          Change only the last access timestamp. Neither the creation or
-                last modified timestamps will be changed unless -C or -m or both
+    -a          Change only the last access timestamp. The creation and last
+                modified timestamps will not be affected unless -C, -m or both
                 are specified.
 
-    -C          Change only the creation timestamp. Neither the last access nor
-                last modified timestamps will be changed unless -a or -m or both
+    -C          Change only the creation timestamp. The last access and last
+                modified timestamps will not be affected unless -a, -m or both
                 are specified.
 
     -c          Do not create a new file if FILE does not exist. The program
@@ -30,8 +30,8 @@ Options:
                 its timestamp will be changed rather than that of the file it
                 refers to.
 
-    -m          Change only the last modified timestamp. Neither the creation or
-                last access timestamps will be changed unless -C or -a or both
+    -m          Change only the last modified timestamp. The creation and last
+                access timestamps will not be affected unless -C, -a or both
                 are specified.
 
     -r REFFILE  Use the timestamp of the file specified by the REFFILE argument
@@ -69,6 +69,12 @@ Options:
                     ss      Second of minute (00-59).
                     SSS     Millisecond of second (000-999).
                     Z       Indicates timestamp is in UTC.
+
+                Date components are validated against the specified year and
+                calendar rules. This means "DD" must be valid for the given
+                month and year (e.g., Feb. 29 is only accepted in leap years),
+                "DDD" must not exceed 365 in non-leap years, and "ww" must not
+                exceed the number of ISO weeks in the specified year.
 
     -h          Display this help information and exit.
 

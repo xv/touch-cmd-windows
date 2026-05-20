@@ -24,7 +24,7 @@
 
 #if defined(_M_ARM64)
 #define BUILD_PLAT "arm64"
-#elif defined(_WIN64) || defined(__x86_64__)
+#elif defined(_WIN64)
 #define BUILD_PLAT "x64"
 #elif (defined(_WIN32) && !defined(_WIN64))
 #define BUILD_PLAT "x86"
@@ -45,11 +45,11 @@ Options:\n\
                     ss   Seconds (00-59).\n\n\
                 If FILE does not exist, it will be created with adjusted \n\
                 timestamps, unless the -c option is specified.\n\n\
-    -a          Change only the last access timestamp. Neither the creation or\n\
-                last modified timestamps will be changed unless -C or -m or both\n\
+    -a          Change only the last access timestamp. The creation and last\n\
+                modified timestamps will not be affected unless -C, -m or both\n\
                 are specified.\n\n\
-    -C          Change only the creation timestamp. Neither the last access nor\n\
-                last modified timestamps will be changed unless -a or -m or both\n\
+    -C          Change only the creation timestamp. The last access and last\n\
+                modified timestamps will not be affected unless -a, -m or both\n\
                 are specified.\n\n\
     -c          Do not create a new file if FILE does not exist. The program\n\
                 will not display a diagnostic or error message and the the exit\n\
@@ -57,8 +57,8 @@ Options:\n\
     -d          Do not dereference symbolic links. If FILE is a symbolic link,\n\
                 its timestamp will be changed rather than that of the file it\n\
                 refers to.\n\n\
-    -m          Change only the last modified timestamp. Neither the creation or\n\
-                last access timestamps will be changed unless -C or -a or both\n\
+    -m          Change only the last modified timestamp. The creation and last\n\
+                access timestamps will not be affected unless -C, -a or both\n\
                 are specified.\n\n\
     -r REFFILE  Use the timestamp of the file specified by the REFFILE argument\n\
                 instead instead of the current time of day. This option cannot\n\
@@ -88,6 +88,11 @@ Options:\n\
                     ss      Second of minute (00-59).\n\
                     SSS     Millisecond of second (000-999).\n\
                     Z       Indicates timestamp is in UTC.\n\n\
+                Date components are validated against the specified year and\n\
+                calendar rules. This means \"DD\" must be valid for the given\n\
+                month and year (e.g., Feb. 29 is only accepted in leap years),\n\
+                \"DDD\" must not exceed 365 in non-leap years, and \"ww\" must not\n\
+                exceed the number of ISO weeks in the specified year.\n\n\
     -h          Display this help information and exit.\n\n\
     -v          Display version information and exit.\n\n\
 This is an open-source utility whose code is found at:\n\
