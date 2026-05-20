@@ -35,8 +35,8 @@ Options:
                 are specified.
 
     -r REFFILE  Use the timestamp of the file specified by the REFFILE argument
-                instead instead of the current time of day. This option cannot
-                be combined with -t.
+                instead of the current time of day. This option cannot be
+                combined with -t.
 
                 If -A is specified, the adjustment will be applied to the
                 referenced timestamp.
@@ -75,6 +75,8 @@ Options:
                 month and year (e.g., Feb. 29 is only accepted in leap years),
                 "DDD" must not exceed 365 in non-leap years, and "ww" must not
                 exceed the number of ISO weeks in the specified year.
+
+                If no time is specified, midnight local time is assumed.
 
     -h          Display this help information and exit.
 

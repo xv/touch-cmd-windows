@@ -61,8 +61,8 @@ Options:\n\
                 access timestamps will not be affected unless -C, -a or both\n\
                 are specified.\n\n\
     -r REFFILE  Use the timestamp of the file specified by the REFFILE argument\n\
-                instead instead of the current time of day. This option cannot\n\
-                be combined with -t.\n\n\
+                instead of the current time of day. This option cannot be\n\
+                combined with -t.\n\n\
                 If -A is specified, the adjustment will be applied to the\n\
                 referenced timestamp.\n\n\
     -t STAMP    Use the timestamp specified by the STAMP argument, which must be\n\
@@ -93,6 +93,7 @@ Options:\n\
                 month and year (e.g., Feb. 29 is only accepted in leap years),\n\
                 \"DDD\" must not exceed 365 in non-leap years, and \"ww\" must not\n\
                 exceed the number of ISO weeks in the specified year.\n\n\
+                If no time is specified, midnight local time is assumed.\n\n\
     -h          Display this help information and exit.\n\n\
     -v          Display version information and exit.\n\n\
 This is an open-source utility whose code is found at:\n\
