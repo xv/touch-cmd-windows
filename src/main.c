@@ -7,6 +7,12 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#include "errmsg.h"
+#include "getopt.h"
+#include "console.h"
+#include "version.h"
+#include "timeparse.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -15,12 +21,6 @@
 #include <limits.h>
 #include <tchar.h>
 #include <assert.h>
-
-#include "errmsg.h"
-#include "getopt.h"
-#include "console.h"
-#include "version.h"
-#include "timeparse.h"
 
 #if defined(_M_ARM64)
 #define BUILD_PLAT "arm64"

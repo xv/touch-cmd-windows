@@ -5,9 +5,9 @@
  * of the MIT license. See the LICENSE file for details.
  */
 
-#include <stdlib.h>
-
 #include "console.h"
+
+#include <stdlib.h>
 
 #define FG_MASK (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY)
 #define BG_MASK (BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY)

@@ -8,9 +8,7 @@
 #ifndef TIMEPARSE_H
 #define TIMEPARSE_H
 
-#define WIN32_LEAN_AND_MEAN
-
-#include <windows.h>
+#include <stdbool.h>
 #include <tchar.h>
 
 typedef struct utc_offset {

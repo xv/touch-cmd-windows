@@ -5,8 +5,10 @@
  * of the MIT license. See the LICENSE file for details.
  */
 
-#include <stdbool.h>
+#define WIN32_LEAN_AND_MEAN
+
 #include <limits.h>
+#include <windows.h>
 
 #include "timeparse.h"
 

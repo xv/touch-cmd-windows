@@ -7,7 +7,7 @@
 
 #include "errmsg.h"
 
-TCHAR *get_win32_error_msg(unsigned long code) {
+TCHAR *get_win32_error_msg(DWORD code) {
     TCHAR *msg = NULL;
     FormatMessage(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |FORMAT_MESSAGE_FROM_SYSTEM,

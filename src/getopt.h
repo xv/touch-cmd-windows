@@ -1,7 +1,6 @@
 #ifndef GETOPT_H
 #define GETOPT_H
 
-#include <stddef.h>
 #include <tchar.h>
 
 #define ERROR_ILLEGAL_OPT 1
