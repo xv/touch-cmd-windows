@@ -10,6 +10,11 @@ The Command Line
 The `[...]` part means you can specify more than one file and as many files as you wish. Additionally, if any options are specified, they must be provided before file operands or they may be interpreted as filenames.
 
 ### Options
+> [!NOTE]  
+> The formats for the `-A` and `-t` options have recently changed. The descriptions in the table below have not yet been updated to reflect the new formats. This notice will be removed once version 2.0 of the utility is ready to be published.
+>
+> The information in this README is accurate up to release 1.1.2 (commit: [1b3c7ca](https://github.com/xv/touch-cmd-windows/commit/1b3c7ca70c0a79782754a06006f00dbec0b78b95)).
+
 | Item          | Description |
 |---------------|:------------|
 | `-A` *offset* | Adjust the timestamps of a file by an offset specified by the *offset* argument, which must be in the format `[-]HH[mm][ss]`, where `HH` is a 2-digit numerical representation of hours between 0 and 99; `mm` is a 2-digit numerical representation of minutes between 0 and 59; and `ss` is a 2-digit numerical representation of seconds between 0 and 59. A negative offset will move time backward.<br><br>If a file does not exist, it will be created with adjusted timestamps, unless the `-c` option is specified.
