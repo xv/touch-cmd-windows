@@ -579,9 +579,7 @@ static noreturn void die(bool print_help_hint, const TCHAR *fmt, ...) {
         _tprintf(_T("Try '%s -h' to show help information.\n"), prog_name);
     }
 
-    if (console) {
-        free(console);
-    }
+    console_close(console);
 
     exit(EXIT_FAILURE);
 }
@@ -627,6 +625,7 @@ int _tmain(int argc, TCHAR **argv) {
                 break;
             case 'h':
                 print_usage_info();
+                console_close(console);
                 exit(EXIT_SUCCESS);
             case 'm':
                 ft_flags |= FT_WRITE;
@@ -639,6 +638,7 @@ int _tmain(int argc, TCHAR **argv) {
                 break;
             case 'v':
                 print_version_info();
+                console_close(console);
                 exit(EXIT_SUCCESS);
             default:
                 if (opt_error == ERROR_ILLEGAL_OPT) {
@@ -720,9 +720,7 @@ int _tmain(int argc, TCHAR **argv) {
         };
     }
 
-    if (console) {
-        free(console);
-    }
+    console_close(console);
 
     return all_ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

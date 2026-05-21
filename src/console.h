@@ -63,7 +63,7 @@ Console *console_open(void);
  * Restores original console attributes and frees the instance.
  *
  * @param console
- * Console instance to close.
+ * Console instance to close. If NULL, no action is taken.
  */
 void console_close(Console *console);
 
