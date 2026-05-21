@@ -33,10 +33,27 @@
 #endif
 
 #define PROGRAM_USAGE_SUMMARY \
-"Syntax:\n\
-    touch [options] FILE [...]\n\n\
-Options:\n\
-    -A OFFSET   Adjust the timestamps of a file by OFFSET, which must be in the\n\
+"SYNTAX\n\
+    touch [OPTION]... FILE...\n\n\
+DESCRIPTION\n\
+    Updates the access and modification timestamps of each file specified by the\n\
+    FILE argument to the current time of day.\n\n\
+    The -a and -m flags are set by default.\n\n\
+OPTIONS\n\
+    -C          Change only the creation timestamp. The last access and last\n\
+                write timestamps are not affected unless -a and -m flags are\n\
+                also set.\n\n\
+    -a          Change only the last access timestamp. The creation and last\n\
+                access timestamps are not affected unless -C and -m flags are\n\
+                also set.\n\n\
+    -m          Change only the last write timestamp. The creation and last\n\
+                write timestamps are not affected unless -C and -a flags are\n\
+                also set.\n\n\
+    -c          Do not create FILE if it does not exist.\n\n\
+    -d          Do not dereference symbolic links. If FILE is a symbolic link,\n\
+                its timestamp will be changed rather than that of the file it\n\
+                refers to.\n\n\
+    -A OFFSET   Adjust the timestamps of FILE by OFFSET, which must be in the\n\
                 format \"[-][[hh]mm]ss\". The parts of the argument represent the\n\
                 following:\n\n\
                     -    Make the adjustment negative, moving time backward.\n\
@@ -45,21 +62,6 @@ Options:\n\
                     ss   Seconds (00-59).\n\n\
                 If FILE does not exist, it will be created with adjusted \n\
                 timestamps, unless the -c option is specified.\n\n\
-    -a          Change only the last access timestamp. The creation and last\n\
-                modified timestamps will not be affected unless -C, -m or both\n\
-                are specified.\n\n\
-    -C          Change only the creation timestamp. The last access and last\n\
-                modified timestamps will not be affected unless -a, -m or both\n\
-                are specified.\n\n\
-    -c          Do not create a new file if FILE does not exist. The program\n\
-                will not display a diagnostic or error message and the the exit\n\
-                value will not be affected.\n\n\
-    -d          Do not dereference symbolic links. If FILE is a symbolic link,\n\
-                its timestamp will be changed rather than that of the file it\n\
-                refers to.\n\n\
-    -m          Change only the last modified timestamp. The creation and last\n\
-                access timestamps will not be affected unless -C, -a or both\n\
-                are specified.\n\n\
     -r REFFILE  Use the timestamp of the file specified by the REFFILE argument\n\
                 instead of the current time of day. This option cannot be\n\
                 combined with -t.\n\n\
@@ -83,20 +85,21 @@ Options:\n\
                     DD      Day (01-31).\n\
                     DDD     Day of year (001-366).\n\
                     ww      Week of year (01-53).\n\
+                    T       Separates date and time components.\n\
                     hh      Hour of day (00-23).\n\
                     mm      Minute of hour (00-59).\n\
                     ss      Second of minute (00-59).\n\
                     SSS     Millisecond of second (000-999).\n\
                     Z       Indicates timestamp is in UTC.\n\n\
-                Date components are validated against the specified year and\n\
-                calendar rules. This means \"DD\" must be valid for the given\n\
-                month and year (e.g., Feb. 29 is only accepted in leap years),\n\
-                \"DDD\" must not exceed 365 in non-leap years, and \"ww\" must not\n\
+                Date components are validated against calendar rules for the\n\
+                specified year. This means \"DD\" must be valid for the given\n\
+                month and year (e.g., Feb. 29 is only accepted in leap years);\n\
+                \"DDD\" must not exceed 365 in non-leap years; and \"ww\" must not\n\
                 exceed the number of ISO weeks in the specified year.\n\n\
-                If no time is specified, midnight local time is assumed.\n\n\
+                If the time is omitted, midnight local time is assumed.\n\n\
     -h          Display this help information and exit.\n\n\
     -v          Display version information and exit.\n\n\
-This is an open-source utility whose code is found at:\n\
+Source code:\n\
 https://github.com/xv/touch-cmd-windows"
 
 typedef enum timestamp_zone {
