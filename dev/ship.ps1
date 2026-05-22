@@ -1,8 +1,10 @@
+# Creates a zipped release for the specified platform
+
 param (
     [string]$p = "x64"
 )
 
-$platforms = ("x86", "x64")
+$platforms = ("x86", "x64", "arm64")
 
 if (!($platforms -contains $p)) {
     Write-Host "-p must be one of [$($platforms -join ", ")]." -f Red
@@ -10,7 +12,7 @@ if (!($platforms -contains $p)) {
 }
 
 $exeDirName = if ($p -eq "x86") { "Win32" } else { $p }
-$exePath = "release\$exeDirName\touch.exe"
+$exePath = "..\visualstudio\release\$exeDirName\touch.exe"
 
 if (-Not (Test-Path $exePath)) {
     Write-Host "Could not find '$exePath'." -f Red
@@ -48,7 +50,7 @@ $filesToZip = @(
     "..\LICENSE"
 )
 
-$zipOutPath = "release\touch-$ver-$p.zip"
+$zipOutPath = "touch-$ver-$p.zip"
 
 Compress-Archive `
     -Path $filesToZip `

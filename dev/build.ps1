@@ -76,7 +76,7 @@ Enter-VsDevShell `
 Write-Host "Creating a $c build for $p..." -f Blue
 
 MSBuild -nologo -verbosity:$v -noWarn:C5105 `
-    @(Get-ChildItem *.sln)[0] `
+    "..\visualstudio\touch.sln" `
     "/p:configuration=$c" `
     "/p:platform=$p" `
     "/t:clean;restore;build"
