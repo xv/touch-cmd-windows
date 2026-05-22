@@ -67,13 +67,15 @@ OPTIONS
                     D       Day of week (1-7, 1=Monday, 7=Sunday).
                     DD      Day (01-31).
                     DDD     Day of year (001-366).
+                    W       Week designator.
                     ww      Week of year (01-53).
-                    T       Separates date and time components.
+                    T       Time designator.
                     hh      Hour of day (00-23).
                     mm      Minute of hour (00-59).
                     ss      Second of minute (00-59).
                     SSS     Millisecond of second (000-999).
-                    Z       Indicates timestamp is in UTC.
+                    Z       UTC designator.
+                    ±       Plus or minus sign preceding UTC offset.
 
                 Date components are validated against calendar rules for the
                 specified year. This means "DD" must be valid for the given
