@@ -6,7 +6,7 @@ $platforms = ("x86", "x64")
 
 if (!($platforms -contains $p)) {
     Write-Host "-p must be one of [$($platforms -join ", ")]." -f Red
-    Exit
+    Exit 1
 }
 
 $exeDirName = if ($p -eq "x86") { "Win32" } else { $p }
@@ -14,7 +14,7 @@ $exePath = "release\$exeDirName\touch.exe"
 
 if (-Not (Test-Path $exePath)) {
     Write-Host "Could not find '$exePath'." -f Red
-    Exit
+    Exit 1
 }
 
 function Get-SoftwareVersion {
@@ -43,8 +43,8 @@ $ver = Get-SoftwareVersion
 
 $filesToZip = @(
     $exePath,
-    "..\scripts\install.ps1",
-    "..\scripts\uninstall.ps1",
+    "..\share\scripts\install.ps1",
+    "..\share\scripts\uninstall.ps1",
     "..\LICENSE"
 )
 
