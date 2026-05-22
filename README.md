@@ -1,38 +1,23 @@
 About
 -----
-Have you ever used the `touch` command on a GNU/Linux or a macOS system? That's exactly what this utility does. I frequently use the command on Linux to quickly create files and find it rather annoying that I can't do the same thing when I am back on Windows, and so I decided to write a native Windows version of it to satisfy my needs. This is not a clone or fork of the GNU Coreutils `touch`, and although the core functionality is the same, there are some subtle differences between the two. These differences are discussed later in the document.
+Have you ever used the `touch` command on a GNU/Linux or macOS system? That is exactly what this utility does. I frequently use the command on Linux to quickly create files and find it rather annoying that I cannot do the same thing when I am back on Windows. As such, I decided to write a native Windows implementation.
+
+This is not a clone or fork of the GNU Coreutils `touch`, and although the core functionality is the same, there are still some significant differences between the two.
 
 The Command Line
 ----------------
 ### Basic Syntax
-`touch [options] file [...]`
+`touch [OPTION]... FILE...`
 
-The `[...]` part means you can specify more than one file and as many files as you wish. Additionally, if any options are specified, they must be provided before file operands or they may be interpreted as filenames.
+The `...` indicates that you may specify multiple options and multiple files. If options are used, they must appear before the file operands; otherwise, they may be interpreted as filenames.
 
 ### Options
-> [!NOTE]  
-> The formats for the `-A` and `-t` options have recently changed. The descriptions in the table below have not yet been updated to reflect the new formats. This notice will be removed once version 2.0 of the utility is ready to be published.
->
-> The information in this README is accurate up to release 1.1.2 (commit: [1b3c7ca](https://github.com/xv/touch-cmd-windows/commit/1b3c7ca70c0a79782754a06006f00dbec0b78b95)).
-
-| Item          | Description |
-|---------------|:------------|
-| `-A` *offset* | Adjust the timestamps of a file by an offset specified by the *offset* argument, which must be in the format `[-]HH[mm][ss]`, where `HH` is a 2-digit numerical representation of hours between 0 and 99; `mm` is a 2-digit numerical representation of minutes between 0 and 59; and `ss` is a 2-digit numerical representation of seconds between 0 and 59. A negative offset will move time backward.<br><br>If a file does not exist, it will be created with adjusted timestamps, unless the `-c` option is specified.
-| `-a`          | Change only the *last access* timestamp. The *last modified* timestamp will not be changed unless `-m` is specified. |
-| `-C`          | Change only the *creation* timestamp. Neither the *last access* or *last modified* timestamps will be changed unless `-a` or `-m` (or both) are specified. |
-| `-c`          | Do not create a new file if the file specified does not exist. The program will not display a diagnostic or error message and the exit value will not be affected. |
-| `-d`          | Do not dereference symbolic links. If this option is specified, the timestamp of the symbolic link itself will be changed rather than the file it refers to. |
-| `-m`          | Change only the *last modified* timestamp. The *last access* timestamp will not be changed unless `-a` is specified. |
-| `-r` *file*   | Use the timestamp of the file specified by the *file* argument instead of the current time of day. This option cannot be combined with `-t`. |
-| `-t` *stamp*  | Use the timestamp specified by the *stamp* argument, which must be in the format `yyyyMMddHHmm[ss][Z]`, where `yyyy` is a 4-digit numerical representation of the year; `MM` is a 2-digit numerical representation of the month; `dd` is a 2-digit numerical representation of the day; and `ss` is an optional 2-digit numerical representation of the seconds. The timestamp is in local time by default; however, you may optionally append `Z` (case-sensitive) at the end to convert it to UTC time.<br><br>This option cannot be combined with `-r`. |
-| `-h`          | Display help information and exit. |
-| `-v`          | Display version information and exit. |
+Please refer to [cli-help.txt](cli-help.txt) for a detailed overview of the utility's command line interface.
 
 #### Option Specification Quirks
 * The order of options does not matter.
 * Flag options can be combined together. For example: `touch -a -m -c` can be written as `touch -amc`.
-* When neither `-a` nor `-m` is specified, both options are set by default, provided that `-C` is not specified.
-* Options that take an argument like `-r` and `-t` must have other options separated by whitespace after their argument. For example: `touch -at 201109091200 -c`.
+* Options that take an argument like `-r` and `-t` must have other options separated by whitespace after their argument. For example: `touch -at 20110909T1230 -c`.
 
 Difference With GNU/Linux
 -------------------------
@@ -41,7 +26,7 @@ You may refer to the [man page](https://man7.org/linux/man-pages/man1/touch.1.ht
 * Here, we use `-d` instead of `-h` on Linux to specify no-dereference for symbolic links.
 * Option `--time=WORD` on Linux is not supported here. Use one or both of the `-a`, `-m` options instead.
 * Option `-d` (`--date=STRING`) on Linux is not supported here.
-* The format specifier of the `-t` option slightly differs from the Linux one (`[[CC]YY]MMDDhhmm[.ss]`).
+* The format specifier of the `-t` option differs from the Linux one (`[[CC]YY]MMDDhhmm[.ss]`).
 * The `-A` option does not exist on the Linux version of the command, but it does exist on macOS.
 * The `-C` option does not exist on either the Linux or macOS version of the command.
 
@@ -51,11 +36,11 @@ Support for Unicode (UTF-16, really) is provided via the `tchar.h` header and it
 
 Installation
 ------------
-While there's no traditional installer, if you [download a release](https://github.com/xv/touch-cmd-windows/releases), the .zip archive will contain the executable `touch` utility itself and two PowerShell scripts: `install.ps1` and `uninstall.ps1`. The purpose of these scripts is to add or remove the directory of the executable to the PATH environment variable so that `touch` can be called from any directory location in the terminal like any other commands.
+Although there is no traditional installer, each [release](https://github.com/xv/touch-cmd-windows/releases) archive contains the `touch` executable along with two PowerShell scripts: `install.ps1` and `uninstall.ps1`. These scripts add or remove the executable's directory from the PATH environment variable, allowing `touch` to be invoked from any directory in the terminal like any other command.
 
-To add `touch` to the PATH environment variable, extract the archive into a directory &mdash;with a name of your choice&mdash; anywhere you want (I personally prefer `%USERPROFILE%`), then run `.\install` from an elevated PowerShell terminal. The `touch` command will become instantly available to use without requiring a restart of the terminal.
+To add `touch` to PATH, extract the archive to a directory of your choice, then run `.\install` from a PowerShell terminal. The `touch` command will become immediately available without requiring a terminal restart.
 
-To remove `touch` from the PATH environment variable, run `.\uninstall` from an elevated PowerShell terminal. The `touch` command will no longer be accessible unless you are in the same directory as the executable.
+To remove `touch` from PATH, run `.\uninstall` from a PowerShell terminal. The `touch` command will now only be accessible when executed from the directory containing the executable.
 
 ### Security Note
 If you get an error saying "*&lt;script&gt;.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try executing one of the scripts mentioned above, you will need to enable the execution of scripts via:
@@ -69,37 +54,78 @@ Set-ExecutionPolicy -Scope CurrentUser Restricted
 
 Build From Source
 -----------------
-This utility is written in C, using Visual Studio 2026 with MSVC v145 and Windows 11 SDK 26100 ([10.0.26100.0](https://learn.microsoft.com/en-us/windows/apps/windows-sdk/downloads#windows-11--26100-versions)). The solution and project files are present in the `visualstudio\` directory. Simply run the IDE and build. Alternatively, there is also a `.\build` PowerShell script to compile the code if you only have a standalone Build Tools installation or don't feel like firing up the IDE.
+This utility is written in C, using Visual Studio 2026 with MSVC v145 and Windows 11 SDK 26100 ([10.0.26100.0](https://learn.microsoft.com/en-us/windows/apps/windows-sdk/downloads#windows-11--26100-versions)). The solution and project files are present in the `visualstudio\` directory. Simply run the IDE and build. Alternatively, there is also a `dev\build.ps1` script to compile the code if you only have a standalone Build Tools installation or don't feel like firing up the IDE.
 
 Usage Examples
 --------------
-```powershell
+### Basic Usage
+```shell
 # Updates the "Created" timestamp of File1
 # If File1 does not exist, it will be created
 touch -C File1
 
 # Updates the "Accessed" And "Modified" timestamps of File1, File2, File3
-# If these files do not exist, they will not be created
-touch -amc File1 File2 File3
-
-# Changes the "Modified" timestamp of File to 2011-07-08 14:30:00 UTC
-touch -mt 201107081430Z File
+# If these files do not exist, they will NOT be created
+touch -c File1 File2 File3
 
 # Changes the "Accessed" and "Modified" timestamps of File to that of
-# RefFile, and if File does not exist, it will not be created
-touch -cr RefFile File
+# RefFile, and if File does not exist, it will be created with the
+# referenced timestamps
+touch -r RefFile File
+```
 
-# Changes the "Modified" timestamp of File to 2020-10-24 11:00:00 then
-# increments it by an 1 hr and 30 mins to become 2020-10-24 12:30:00
-touch -mA 0130 -t 202010241100 File
+### Timestamp Formatting: Calendar Dates
+```shell
+# Sets the timestamp to May 22, 2026 at 13:00 local time
+touch -t 2026-05-22T13:00 File
 
-# Decrements the "Accessed" and "Modified" timestamps of File by 10 mins
-touch -A -0010 File
+# Same as above, but uses the basic format, allowing hyphens and colons
+# to be omitted and the time precision to be reduced to hours only
+touch -t 20260522T13 File
+
+# Sets the timestamp to May 22, 2026 at 13:00 UTC+05:30
+touch -t 2026-05-22T13:00+05:30 File
+
+# Same as above but in basic format
+touch -t 20260522T13+0530 File
+```
+
+### Timestamp Formatting: Ordinal Dates
+```shell
+# Sets the timestamp to the 142nd day of 2026 at 08:15 UTC
+touch -t 2026-142T08:15Z File
+
+# Same as above but in basic format
+touch -t 2026142T0815Z File
+```
+
+### Timestamp Formatting: Week Dates
+```shell
+# Sets the timestamp to Friday of ISO week 21 in 2026 at 09:45 local time
+touch -t 2026-W21-5T09:45 File
+
+# Same as above but in basic format
+touch -t 2026W215T0945 File
+```
+
+### Adjusting Current Timestamps
+```shell
+# Move the timestamps of File forward by 30s
+touch -A 30 File
+
+# Move the timestamps of File forward by 1m30s
+touch -A 0130 File
+
+# Move the timestamps of File backward by 12h
+touch -A -120000 File
+
+# Sets the timestamp to May 22, 2026 at 13:30:00 local time
+touch -t 2026-05-22T13:30:40 -A -40 File
 ```
 
 ### Working With Directories
 Just like the Unix version, this Windows utility does not create directories if they do not exit. If you want to use `touch` to create a file inside a directory that does not exist, you will need to create it first, then pipe in the path to `touch`. Here are some PowerShell examples to achieve that:
-```PowerShell
+```powershell
 # Creates Dir/Subdir/File1
 md Dir/Subdir/ | % { touch $_/File1 }
 
@@ -143,6 +169,9 @@ If you need to check a file's timestamps after having called `touch`, I suggest 
 # You can also combine all three properties into a single output
 # gp and fl are aliases for Get-ItemProperty and Format-List
 gp File | fl CreationTime,LastAccessTime,LastWriteTime
+
+# Same as above but shows time in UTC
+gp File | fl CreationTimeUtc,LastAccessTimeUtc,LastWriteTimeUtc
 ```
 
 License
