@@ -5,6 +5,11 @@ using namespace System
 
 $ErrorActionPreference = "Stop"
 
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    Write-Host "This script requires PowerShell 7+." -f Red
+    Exit 1
+}
+
 function Remove-PathEnvironmentVariable {
     param (
         [string]$Path,
