@@ -5,6 +5,8 @@
 using namespace System.IO
 using namespace System
 
+$ErrorActionPreference = "Stop"
+
 function Set-PathEnvironmentVariable {
     param (
         [string]$Path,
@@ -20,7 +22,7 @@ function Set-PathEnvironmentVariable {
     )
 
     $exists = $paths.Where({
-        [IO.Path]::TrimEndingDirectorySeparator($_) -eq $Path
+        [Path]::TrimEndingDirectorySeparator($_) -eq $Path
     }, "First").Count -ne 0
 
     if ($exists) {

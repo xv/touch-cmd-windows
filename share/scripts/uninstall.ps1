@@ -3,6 +3,8 @@
 using namespace System.IO
 using namespace System
 
+$ErrorActionPreference = "Stop"
+
 function Remove-PathEnvironmentVariable {
     param (
         [string]$Path,
