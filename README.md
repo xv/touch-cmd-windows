@@ -45,15 +45,15 @@ To add `touch` to PATH, extract the archive to a directory of your choice, then 
 
 To remove `touch` from PATH, run `.\uninstall` from a PowerShell terminal. The `touch` command will now only be accessible when executed from the directory containing the executable.
 
-### Security Note
-If you get an error saying "*&lt;script&gt;.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try executing one of the scripts mentioned above, you will need to enable the execution of scripts via:
-```PowerShell
-Set-ExecutionPolicy -Scope CurrentUser Bypass
-```
-Once you are done, you may disable script execution again via:
-```PowerShell
-Set-ExecutionPolicy -Scope CurrentUser Restricted
-```
+> [!TIP]
+> If you get an error saying "*&lt;script&gt;.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try executing one of the scripts mentioned above, you will need to enable script execution via:
+> ```PowerShell
+> Set-ExecutionPolicy -Scope CurrentUser Bypass
+> ```
+> Once you are done, you may disable script execution again via:
+> ```PowerShell
+> Set-ExecutionPolicy -Scope CurrentUser Restricted
+> ```
 
 Build From Source
 -----------------
