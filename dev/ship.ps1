@@ -45,8 +45,7 @@ $ver = Get-SoftwareVersion
 
 $filesToZip = @(
     $exePath,
-    "..\share\scripts\install.ps1",
-    "..\share\scripts\uninstall.ps1",
+    "..\share\scripts\*",
     "..\LICENSE"
 )
 
