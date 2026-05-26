@@ -36,14 +36,9 @@ Support for Unicode (UTF-16, really) is provided via the `tchar.h` header and it
 
 Installation
 ------------
-Although there is no traditional installer, each [release](https://github.com/xv/touch-cmd-windows/releases) archive contains the `touch` executable along with two PowerShell scripts: `install.ps1` and `uninstall.ps1`. These scripts add or remove the executable's directory from the PATH environment variable, allowing `touch` to be invoked from any directory in the terminal like any other command.
+Although there is no traditional installer, each [release](https://github.com/xv/touch-cmd-windows/releases) archive includes the `touch` executable along with a PowerShell script named `config-path.ps1`. This script lets you add or remove the executable's directory from the `PATH` environment variable, allowing `touch` to be invoked from any directory in the terminal.
 
-> [!CAUTION]
-> `install.ps1` and `uninstall.ps1` require PowerShell 7+. They will not work with PowerShell 5.1 or earlier!
-
-To add `touch` to PATH, extract the archive to a directory of your choice, then run `.\install` from a PowerShell terminal. The `touch` command will become immediately available without requiring a terminal restart.
-
-To remove `touch` from PATH, run `.\uninstall` from a PowerShell terminal. The `touch` command will now only be accessible when executed from the directory containing the executable.
+Once added to PATH, the `touch` command becomes immediately available without requiring a terminal restart. If the directory is later removed from `PATH`, the command will only be accessible when run from the directory containing the executable.
 
 > [!TIP]
 > If you get an error saying "*&lt;script&gt;.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try executing one of the scripts mentioned above, you will need to enable script execution via:
