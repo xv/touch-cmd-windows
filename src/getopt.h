@@ -1,11 +1,11 @@
-#ifndef GETOPT_H
+﻿#ifndef GETOPT_H
 #define GETOPT_H
 
 #include <tchar.h>
 
-#define ERROR_ILLEGAL_OPT 1
-#define ERROR_OPT_REQ_ARG 2
-#define ERROR_INVALID_OPT_ARG 3
+#define GETOPT_ERR_OPT_UNKNOWN 1
+#define GETOPT_ERR_OPT_REQ_ARG 2
+#define GETOPT_ERR_OPT_BAD_ARG 3
 
 // Stores of the index next option to be processed in argv
 extern int opt_index;

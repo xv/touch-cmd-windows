@@ -643,9 +643,9 @@ int _tmain(int argc, TCHAR **argv) {
                 console_close(console);
                 exit(EXIT_SUCCESS);
             default:
-                if (opt_error == ERROR_ILLEGAL_OPT) {
+                if (opt_error == GETOPT_ERR_OPT_UNKNOWN) {
                     die(true, _T("%s: Option -%c is illegal.\n"), prog_name, opt);
-                } else if (opt_error == ERROR_OPT_REQ_ARG) {
+                } else if (opt_error == GETOPT_ERR_OPT_REQ_ARG) {
                     die(true, _T("%s: Option -%c requires an argument.\n"), prog_name, opt);
                 } else {
                     die(true, _T("%s: Option is missing or the format is invalid.\n"), prog_name);

@@ -1,4 +1,4 @@
-/* getopt.c
+﻿/* getopt.c
  * Copyright (C) 2023 Jad Altahan (https://github.com/xv)
  *
  * This software may be modified and distributed under the terms
@@ -40,7 +40,7 @@ int get_opt(int argc, TCHAR *const argv[], const TCHAR *opts) {
         }
 
         if (*opts != ':') {
-            opt_error = ERROR_ILLEGAL_OPT;
+            opt_error = GETOPT_ERR_OPT_UNKNOWN;
         }
 
         return '?';
@@ -57,14 +57,14 @@ int get_opt(int argc, TCHAR *const argv[], const TCHAR *opts) {
             // separating them. I.e., accepts '-xY' along with '-x Y'
             opt_arg = opts_remaining;
         } else if (argc <= ++opt_index /* arg option not provided */) {
-            opt_error = ERROR_OPT_REQ_ARG;
+            opt_error = GETOPT_ERR_OPT_REQ_ARG;
             return '?';
         } else {
             // Disallow '-' for option args
             // XXX: What if an intended option arg is a '-' or starts with it?
             //      Disallowing it might not actually be in the best interest
             // if (argv[opt_index][0] == '-') {
-            //     opt_error = ERROR_INVALID_OPT_ARG;
+            //     opt_error = GETOPT_ERR_OPT_BAD_ARG;
             //     return '?';
             // }
 
