@@ -40,14 +40,20 @@ Although there is no traditional installer, each [release](https://github.com/xv
 
 Once added to PATH, the `touch` command becomes immediately available without requiring a terminal restart. If the directory is later removed from `PATH`, the command will only be accessible when run from the directory containing the executable.
 
-> [!TIP]
-> If you get an error saying "*&lt;script&gt;.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try running the script mentioned above, you will need to enable script execution via:
+> [!NOTE]
+> If you get an error saying "*config-path.ps1 cannot be loaded because running scripts is disabled on this system.*" when you try running the script mentioned above, you will need to enable script execution via:
 > ```PowerShell
 > Set-ExecutionPolicy -Scope CurrentUser Bypass
 > ```
 > Once you are done, you may disable script execution again via:
 > ```PowerShell
 > Set-ExecutionPolicy -Scope CurrentUser Restricted
+> ```
+
+> [!NOTE]
+> If script execution is enabled but you get an error saying "*The file config-path.ps1 is not digitally signed. You cannot run this script on the current system*", try unblocking the script directly via:
+> ```PowerShell
+> Unblock-File config-path.ps1
 > ```
 
 Build From Source
