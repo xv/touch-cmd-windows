@@ -30,10 +30,6 @@ You may refer to the [man page](https://man7.org/linux/man-pages/man1/touch.1.ht
 * The `-A` option does not exist on the Linux version of the command, but it does exist on macOS.
 * The `-C` option does not exist on either the Linux or macOS version of the command.
 
-Unicode Support
----------------
-Support for Unicode (UTF-16, really) is provided via the `tchar.h` header and its macros, which automatically determine whether or not wide character types should be used, based on the *Character Set* setting in the Visual Studio project properties. Without Unicode support enabled, the program will not be able to to touch filenames like `مرحبا привет こんにちは` because the entrypoint itself will fail to properly receive Unicode command line arguments.
-
 Installation
 ------------
 Although there is no traditional installer, each [release](https://github.com/xv/touch-cmd-windows/releases) archive includes the `touch` executable along with a PowerShell script named `config-path.ps1`. This script lets you add or remove the executable's directory from the `PATH` environment variable, allowing `touch` to be invoked from any directory in the terminal.
@@ -59,6 +55,9 @@ Once added to PATH, the `touch` command becomes immediately available without re
 Build From Source
 -----------------
 This utility is written in C, using Visual Studio 2026 with MSVC v145 and Windows 11 SDK 26100 ([10.0.26100.0](https://learn.microsoft.com/en-us/windows/apps/windows-sdk/downloads#windows-11--26100-versions)). The solution and project files are present in the `visualstudio\` directory. Simply run the IDE and build. Alternatively, there is also a `dev\build.ps1` script to compile the code if you only have a standalone Build Tools installation or don't feel like firing up the IDE.
+
+### Unicode Support
+Support for Unicode (UTF-16, really) is provided via the Windows `tchar.h` header and its macros, which help automatically determine whether or not wide character types should be used, based on the *Character Set* setting in the Visual Studio project properties. Without Unicode support enabled, the program will not be able to to touch filenames like `مرحبا привет こんにちは` because the entrypoint itself will fail to properly receive Unicode command line arguments.
 
 Usage Examples
 --------------
